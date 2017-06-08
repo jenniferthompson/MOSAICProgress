@@ -1,0 +1,157 @@
+---
+title: "MOSAIC Study Progress"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(plotly)
+library(highcharter)
+
+source("datamgmt_progress.R")
+
+```
+
+Screening & Enrollment
+=====================================
+
+Column {data-width=700}
+-----------------------------------------------------------------------
+
+### Patients Screened, Approached, and Enrolled
+
+```{r screening}
+screen_plot <- ggplot(data = screening_summary, aes(x = myear)) +
+  geom_bar(aes(y = Enrolled), stat = "identity", alpha = 0.75) +
+  geom_bar(aes(y = Approached), stat = "identity", alpha = 0.4) +
+  geom_bar(aes(y = Screened), stat = "identity", alpha = 0.2) +
+  scale_x_discrete(name = NULL, labels = screening_summary$myear_char) +
+  scale_y_continuous(name = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 45, vjust = 1))
+
+x <- y <- list(title = NULL)
+
+screen_plot %>%
+  ggplotly(tooltip = c("y")) %>%
+  layout(xaxis = x, yaxis = y)
+
+```
+
+### Study Exclusions
+
+```{r exclusions}
+exc_plot <- ggplot(data = exc_over_time,
+                   aes(x = myear, y = Percent, group = Reason, colour = Reason)) +
+  geom_line(alpha = 0.6) +
+  geom_point(alpha = 0.6) +
+  scale_x_discrete(labels = exc_over_time$myear_char) +
+  scale_y_continuous(breaks = seq(0, 100, 20),
+                     labels = paste0(seq(0, 100, 20), "%")) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, vjust = 1))
+
+exc_plot %>%
+  ggplotly(tooltip = c("group", "y")) %>%
+  layout(xaxis = x, yaxis = y)
+
+```
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+### Cumulative Enrollment as of `r format(Sys.Date(), "%B %d, %Y")`
+
+```{r enrollment}
+screening_statement <- sprintf(
+  "We have screened %s patients; %s%% were excluded and %s%% approached. Of those approached, %s%% refused consent and %s%% were enrolled.",
+  n_screened,
+  round(pct_excluded*100),
+  round(pct_approached*100),
+  round(pct_refused*100),
+  round(pct_enrolled*100)
+)
+
+enroll_gauge <- highchart() %>%
+  hc_chart(type = "solidgauge") %>%
+  hc_plotOptions(
+    solidgauge = list(dataLabels = list(y = -35,
+                                        borderWidth = 0,
+                                        style = list(fontSize = "30px")))
+    ) %>%
+  hc_pane(startAngle = -90, endAngle = 90, 
+          background = list(innerRadius = "60%", outerRadius = "100%", shape = "arc")) %>%
+  hc_add_series(name = "Enrolled", data = n_enrolled) %>%
+  hc_yAxis(min = 0, max = n_goal, tickInterval = 100, minorTickInterval = "null",
+           labels = list(distance = 15)) %>%
+  hc_subtitle(text = screening_statement, verticalAlign = "bottom", y = -75)
+
+enroll_gauge
+
+```
+
+### {data-height=300}
+<p style="position:absolute; bottom:0; right:0;">
+  <img src="Graphics/tiny_MOSAIC_short.png">
+</p>
+
+Phase I (In-Hospital)
+=====================================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+
+Phase II (Follow-Up)
+=====================================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+
