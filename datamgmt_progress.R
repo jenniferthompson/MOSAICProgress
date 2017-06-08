@@ -28,11 +28,16 @@ get_csv <- function(pF){
 import_df <- function(rctoken){
   tmp_pF <- get_pF(rctoken)
   tmp_csv <- get_csv(tmp_pF)
-  tmp_csv
   
   ## REDCap loves to use so many underscores; one per instance seems like plenty
-  names(tmp_csv) <- gsub('_+', '_', names(tmp_csv))
+  names(tmp_csv) <- gsub("_+", "_", names(tmp_csv))
+  
+  tmp_csv
 }
 
 inhosp_df <- import_df("MOSAIC_IH_TOKEN")
 exc_df <- import_df("MOSAIC_EXC_TOKEN")
+
+## Remove test patients from each database
+inhosp_df <- inhosp_df[grep("test", tolower(inhosp_df$id), invert = TRUE),]
+exc_df <- exc_df[grep("test", tolower(exc_df$exc_id), invert = TRUE),]
