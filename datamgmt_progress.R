@@ -4,6 +4,7 @@
 
 library(RCurl)
 library(tidyverse)
+library(lubridate)
 
 ## -- Import each data set from REDCap (exclusions, in-hospital, follow-up) ----
 ## All tokens are stored in .Renviron
@@ -164,3 +165,24 @@ exc_cumul <- exc_df_long %>%
            ) ~ "Informed consent",
            TRUE ~ "Other"
          ))
+
+################################################################################
+## Phase I (In-Hospital)
+################################################################################
+
+## -- Currently: died/withdrew in hospital, discharged, still in hospital ------
+all_enrolled <- inhosp_df %>%
+  filter(redcap_event_name == "Enrollment /Trial Day 1") %>%
+  mutate(inhosp_status = factor(ifelse(!is.na(hospdis_dttm), 1,
+                                ifelse(!is.na(death_dttm), 2,
+                                ifelse(!is.na(studywd_dttm), 3, 4))),
+                                levels = 1:4,
+                                labels = c("Discharged alive",
+                                           "Died in hospital",
+                                           "Withdrew in hospital",
+                                           "Still in hospital")))
+  
+status_count <- all_enrolled %>%
+  group_by(inhosp_status) %>%
+  summarise(n_status = n())
+

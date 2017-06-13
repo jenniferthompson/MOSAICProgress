@@ -167,8 +167,8 @@ enroll_gauge
 
 ```{r exclusions_cumulative}
 tm_exc <- treemap(dtf = exc_cumul,
-                  index = c('reason_type', 'Reason'),
-                  vSize = 'n_reason',
+                  index = c("reason_type", "Reason"),
+                  vSize = "n_reason",
                   type = "index",
                   title = "",
                   algorithm = "squarified",
@@ -197,25 +197,67 @@ hc_tm_exc
 Phase I (In-Hospital)
 =====================================
 
-Column {data-width=650}
+Column {data-width=300}
 -----------------------------------------------------------------------
 
-### Chart A
+### Current Patient Status
+
+```{r current_status}
+## List of patients currently in hospital
+pts_inhosp <- subset(all_enrolled, inhosp_status == "Still in hospital")$id
+pts_inhosp_text <- ifelse(length(pts_inhosp) == 0, "None",
+                          paste0(pts_inhosp, collapse = "; "))
+
+tm_status <- treemap(
+  dtf = status_count,
+  index = c("inhosp_status"),
+  vSize = "n_status",
+  type = "index",
+  title = "",
+  algorithm = "squarified",
+  palette = mosaic_pal[c("orange1", "green2", "blue3", "red1")],
+  draw = FALSE
+)
+
+hc_tm_status <- hctreemap(
+  tm_status,
+  allowDrillToNode = TRUE,
+  layoutAlgorithm = "squarified",
+  levels = list(levelIsConstant = "false"),
+  dataLabels = list(style = list(color = "white",
+                                 textOutline = "0px contrast",
+                                 fontSize = "8px"))
+) %>%
+  hc_subtitle(
+    text = paste("Patients still in hospital:", pts_inhosp_text), align = "left"
+  )
+
+hc_tm_status
+
+```
+
+### Zarit Caregiver Completion Rate
 
 ```{r}
 
 ```
 
-Column {data-width=350}
------------------------------------------------------------------------
-
-### Chart B
+### Specimen Log Compliance at Discharge
 
 ```{r}
 
 ```
 
-### Chart C
+Column {data-width=700 .tabset}
+-----------------------------------------------------------------------
+
+### Accelerometer Use Snapshot
+
+```{r}
+
+```
+
+### Accelerometer Use Over Time
 
 ```{r}
 
