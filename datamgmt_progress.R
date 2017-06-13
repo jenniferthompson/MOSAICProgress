@@ -186,3 +186,14 @@ status_count <- all_enrolled %>%
   group_by(inhosp_status) %>%
   summarise(n_status = n())
 
+## -- Zarit: completion rate (use raw data, not just "completed?") -------------
+all_enrolled$zarit_questions <-
+  rowSums(!is.na(all_enrolled[,paste0("zarit_", 1:12)]))
+
+all_enrolled <- all_enrolled %>%
+  mutate(zarit_comp_raw = factor(ifelse(zarit_questions == 12, 1,
+                                 ifelse(zarit_questions > 0, 2, 3)),
+                                 levels = 1:3,
+                                 labels = c("Fully completed",
+                                            "Partially completed",
+                                            "Not taken")))

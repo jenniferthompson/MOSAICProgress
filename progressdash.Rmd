@@ -229,7 +229,8 @@ hc_tm_status <- hctreemap(
                                  fontSize = "8px"))
 ) %>%
   hc_subtitle(
-    text = paste("Patients still in hospital:", pts_inhosp_text), align = "left"
+    text = paste("Patients currently in hospital:", pts_inhosp_text),
+    align = "left"
   )
 
 hc_tm_status
@@ -238,7 +239,20 @@ hc_tm_status
 
 ### Zarit Caregiver Completion Rate
 
-```{r}
+```{r zarit_full}
+pct_zarit_full <-
+  round(mean(all_enrolled$zarit_comp_raw == "Fully completed", na.rm = TRUE) * 100)
+pct_zarit_fullpartial <-
+  round(mean(all_enrolled$zarit_comp_raw %in%
+               paste(c("Fully", "Partially"), "completed"),
+             na.rm = TRUE) * 100)
+
+valueBox(
+  value = pct_zarit_full,
+  caption = "percent of patients<br>with fully completed Zarit",
+  color = ifelse(pct_zarit_full < 80, mosaic_col("orange3"), mosaic_col("green1")),
+  icon = "glyphicon-heart-empty"
+)
 
 ```
 
