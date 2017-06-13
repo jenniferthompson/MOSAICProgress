@@ -155,7 +155,7 @@ enroll_gauge
 
 ```
 
-### {data-height=175}
+### Approach & Refusal {data-height=175}
 
 `r screening_statement`
 
