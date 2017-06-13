@@ -4,14 +4,57 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
+    theme: cerulean
 ---
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(plotly)
 library(highcharter)
+library(treemap)
 
 source("datamgmt_progress.R")
+
+mosaic_pal <- c(
+  ## Row 1, starting with leftmost diamond
+  "blue1" = "#283C72", "blue2" = "#243E8B", "blue3" = "#0477BF",
+  "green1" = "#8EC63E", "green2" = "#3BB547",
+  ## Row 2
+  "blue4" = "#24ADCD", "blue5" = "#0976B7", "blue6" = "#23AEDD",
+  "green3" = "#3BB54A", "green4" = "#1A653E",
+  ## Row 3
+  "orange1" = "#E76A32", "orange2" = "#F69723", "orange3" = "#FA961F",
+  "orange4" = "#FBCD93", "ecru" = "#FFF8DE",
+  ## Row 4
+  "red1" = "#D71A60", "red2" = "#F27074", "red3" = "#EC835F",
+  "gray1" = "#E4DAD1", "gray2" = "#F7F5EB",
+  ## Row 5
+  "red4" = "#C0232C", "red5" = "#EE1C27", "red6" = "#FF686D",
+  "red7" = "#F8D4D1", "cream" = "#FEFEFC"
+)
+
+## Function to get hex for a specific element
+mosaic_col <- function(hex){ as.character(mosaic_pal[hex]) }
+
+## Named vector of colors for exclusions
+exc_colors <- c(
+  ">5 hospital days in last 30" = mosaic_col("blue1"),
+  "Severe neurologic injury" = mosaic_col("blue3"),
+  "Death within 24h/hospice" = mosaic_col("blue4"),
+  "Rapidly resolving organ failure" = mosaic_col("blue5"),
+  "BMI > 50" = mosaic_col("red1"),
+  "Substance abuse, etc" = mosaic_col("red2"),
+  "Blind, deaf, English" = mosaic_col("red3"),
+  "Prisoner" = mosaic_col("red4"),
+  "Inability to live independently" = mosaic_col("red5"),
+  "Homeless" = mosaic_col("red6"),
+  "Patient/surrogate refusal" = mosaic_col("green4"),
+  "No surrogate within 72h" = mosaic_col("green1"),
+  "Attending refusal" = mosaic_col("green3"),
+  "Lives >150 miles from VUMC" = mosaic_col("orange1"),
+  "Study with no co-enrollment" = mosaic_col("orange2"),
+  "Other" = mosaic_col("orange3")
+)
 
 ```
 
@@ -25,9 +68,12 @@ Column {data-width=700}
 
 ```{r screening}
 screen_plot <- ggplot(data = screening_summary, aes(x = myear)) +
-  geom_bar(aes(y = Enrolled), stat = "identity", alpha = 0.75) +
-  geom_bar(aes(y = Approached), stat = "identity", alpha = 0.4) +
-  geom_bar(aes(y = Screened), stat = "identity", alpha = 0.2) +
+  geom_bar(aes(y = Enrolled),
+           fill = mosaic_col("red4"), stat = "identity", alpha = 0.9) +
+  geom_bar(aes(y = Approached),
+           fill = mosaic_col("red4"), stat = "identity", alpha = 0.6) +
+  geom_bar(aes(y = Screened),
+           fill = mosaic_col("red4"), stat = "identity", alpha = 0.3) +
   scale_x_discrete(name = NULL, labels = screening_summary$myear_char) +
   scale_y_continuous(name = NULL) +
   theme_minimal() +
@@ -43,14 +89,15 @@ screen_plot %>%
 
 ```
 
-### Study Exclusions
+### Study Exclusions (% of All Patients Excluded)
 
-```{r exclusions}
+```{r exclusions_over_time}
 exc_plot <- ggplot(data = exc_over_time,
                    aes(x = myear, y = Percent, group = Reason, colour = Reason)) +
   geom_line(alpha = 0.6) +
   geom_point(alpha = 0.6) +
-  scale_x_discrete(labels = exc_over_time$myear_char) +
+  scale_colour_manual(values = exc_colors) +
+  scale_x_discrete(labels = unique(exc_over_time$myear_char)) +
   scale_y_continuous(breaks = seq(0, 100, 20),
                      labels = paste0(seq(0, 100, 20), "%")) +
   theme_minimal() +
@@ -66,7 +113,7 @@ exc_plot %>%
 Column {data-width=300}
 -----------------------------------------------------------------------
 
-### Cumulative Enrollment as of `r format(Sys.Date(), "%B %d, %Y")`
+### Cumulative Enrollment as of `r format(Sys.Date(), "%B %d, %Y")` {data-height=250}
 
 ```{r enrollment}
 screening_statement <- sprintf(
@@ -81,22 +128,60 @@ screening_statement <- sprintf(
 enroll_gauge <- highchart() %>%
   hc_chart(type = "solidgauge") %>%
   hc_plotOptions(
-    solidgauge = list(dataLabels = list(y = -35,
-                                        borderWidth = 0,
-                                        style = list(fontSize = "30px")))
-    ) %>%
-  hc_pane(startAngle = -90, endAngle = 90, 
-          background = list(innerRadius = "60%", outerRadius = "100%", shape = "arc")) %>%
-  hc_add_series(name = "Enrolled", data = n_enrolled) %>%
+    solidgauge = list(
+      dataLabels = list(y = -30, borderWidth = 0, style = list(fontSize = "25px"))
+    )
+  ) %>%
+  hc_pane(startAngle = -90, endAngle = 90,
+          size = "150%",
+          center = c("50%", "90%"),
+          background = list(innerRadius = "60%",
+                            outerRadius = "100%",
+                            shape = "arc")) %>%
+  hc_add_series(name = "Enrolled",
+                data = list(list(y = n_enrolled, color = mosaic_col("green1")))) %>%
   hc_yAxis(min = 0, max = n_goal, tickInterval = 100, minorTickInterval = "null",
-           labels = list(distance = 15)) %>%
-  hc_subtitle(text = screening_statement, verticalAlign = "bottom", y = -75)
+           labels = list(distance = 15))
 
 enroll_gauge
 
 ```
 
-### {data-height=300}
+### {data-height=175}
+
+`r screening_statement`
+
+### Cumulative Exclusions (Total: `r nrow(exc_df)`) {data-height=375}
+
+```{r exclusions_cumulative_prep, results = 'hide'}
+
+```
+
+```{r exclusions_cumulative}
+tm_exc <- treemap(dtf = exc_cumul,
+                  index = c('reason_type', 'Reason'),
+                  vSize = 'n_reason',
+                  type = "index",
+                  title = "",
+                  algorithm = "squarified",
+                  palette = mosaic_pal[c("orange1", "green2", "blue3", "red1")],
+                  draw = FALSE)
+
+hc_tm_exc <- highchart(height = 300, width = 290) %>% 
+  hc_add_series_treemap(tm_exc,
+                        allowDrillToNode = TRUE,
+                        layoutAlgorithm = "squarified",
+                        levels = list(levelIsConstant = "false"),
+                        dataLabels = list(style = list(color = "white",
+                                                       textOutline = "0px contrast",
+                                                       fontSize = "8px")),
+                        name = "tmdata")
+
+hc_tm_exc
+
+```
+
+### {data-height=200}
 <p style="position:absolute; bottom:0; right:0;">
   <img src="Graphics/tiny_MOSAIC_short.png">
 </p>
