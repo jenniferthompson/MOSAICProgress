@@ -125,23 +125,31 @@ screening_statement <- sprintf(
   round(pct_enrolled*100)
 )
 
-enroll_gauge <- highchart() %>%
-  hc_chart(type = "solidgauge") %>%
-  hc_plotOptions(
-    solidgauge = list(
-      dataLabels = list(y = -30, borderWidth = 0, style = list(fontSize = "25px"))
-    )
-  ) %>%
-  hc_pane(startAngle = -90, endAngle = 90,
-          size = "150%",
-          center = c("50%", "90%"),
-          background = list(innerRadius = "60%",
-                            outerRadius = "100%",
-                            shape = "arc")) %>%
-  hc_add_series(name = "Enrolled",
-                data = list(list(y = n_enrolled, color = mosaic_col("green1")))) %>%
-  hc_yAxis(min = 0, max = n_goal, tickInterval = 100, minorTickInterval = "null",
-           labels = list(distance = 15))
+# enroll_gauge <- highchart() %>%
+#   hc_chart(type = "solidgauge") %>%
+#   hc_plotOptions(
+#     solidgauge = list(
+#       dataLabels = list(y = -30, borderWidth = 0, style = list(fontSize = "25px"))
+#     )
+#   ) %>%
+#   hc_pane(startAngle = -90, endAngle = 90,
+#           size = "150%",
+#           center = c("50%", "90%"),
+#           background = list(innerRadius = "60%",
+#                             outerRadius = "100%",
+#                             shape = "arc")) %>%
+#   hc_add_series(name = "Enrolled",
+#                 data = list(list(y = n_enrolled, color = mosaic_col("green1")))) %>%
+#   hc_yAxis(min = 0, max = n_goal, tickInterval = 100, minorTickInterval = "null",
+#            labels = list(distance = 15))
+
+enroll_gauge <- gauge(
+  value = n_enrolled,
+  min = 0,
+  max = n_goal,
+  sectors = gaugeSectors(colors = mosaic_col("green1")),
+  label = "patients"
+)
 
 enroll_gauge
 
@@ -167,15 +175,15 @@ tm_exc <- treemap(dtf = exc_cumul,
                   palette = mosaic_pal[c("orange1", "green2", "blue3", "red1")],
                   draw = FALSE)
 
-hc_tm_exc <- highchart(height = 300, width = 290) %>% 
-  hc_add_series_treemap(tm_exc,
-                        allowDrillToNode = TRUE,
-                        layoutAlgorithm = "squarified",
-                        levels = list(levelIsConstant = "false"),
-                        dataLabels = list(style = list(color = "white",
-                                                       textOutline = "0px contrast",
-                                                       fontSize = "8px")),
-                        name = "tmdata")
+hc_tm_exc <- hctreemap(
+  tm_exc,
+  allowDrillToNode = TRUE,
+  layoutAlgorithm = "squarified",
+  levels = list(levelIsConstant = "false"),
+  dataLabels = list(style = list(color = "white",
+                                 textOutline = "0px contrast",
+                                 fontSize = "8px"))
+)
 
 hc_tm_exc
 
