@@ -197,3 +197,42 @@ all_enrolled <- all_enrolled %>%
                                  labels = c("Fully completed",
                                             "Partially completed",
                                             "Not taken")))
+
+## -- Specimen log: compliance = >0 tubes drawn at discharge ("day 30") --------
+## Combine levels for patient discharged, died or withdrew before blood draw
+spec_unavail_levels <- paste(
+  "Patient",
+  c("discharged from hospital", "died", "withdrew"),
+  "before blood draw"
+)
+
+specimen_df <- inhosp_df %>%
+  filter(redcap_event_name == "Trial Day 30") %>%
+  dplyr::select(id, blue_drawn, blue_rsn, purple_drawn, purple_rsn) %>%
+  gather(key = org_var, value = org_value, blue_drawn:purple_rsn) %>%
+  separate(org_var, into = c("Color", "var"), sep = "_") %>%
+  spread(key = var, value = org_value) %>%
+  mutate(drawn = as.numeric(drawn),
+         compliant = drawn > 0,
+         Reason = factor(ifelse(compliant, 7,
+                         ifelse(is.na(rsn), NA,
+                         ifelse(rsn == "Low volume", 6,
+                         ifelse(rsn == "No access", 5,
+                         ifelse(rsn == "Patient/surrogate refused blood draw", 4,
+                         ifelse(rsn %in% spec_unavail_levels, 3,
+                         ifelse(rsn == "Not randomized", 2, 1))))))),
+                         levels = 1:7,
+                         labels = c("Other",
+                                    "Not randomized",
+                                    "Pt unavailable",
+                                    "Refusal",
+                                    "No access",
+                                    "Low volume",
+                                    "Compliant")))
+  
+specimen_rsns <- specimen_df %>%
+  group_by(Color, Reason) %>%
+  summarise(n_reason = n()) %>%
+  ungroup() %>%
+  mutate(Percent = (n_reason / n_enrolled) * 100)
+

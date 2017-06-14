@@ -161,10 +161,6 @@ enroll_gauge
 
 ### Cumulative Exclusions (Total: `r nrow(exc_df)`) {data-height=375}
 
-```{r exclusions_cumulative_prep, results = 'hide'}
-
-```
-
 ```{r exclusions_cumulative}
 tm_exc <- treemap(dtf = exc_cumul,
                   index = c("reason_type", "Reason"),
@@ -215,7 +211,7 @@ tm_status <- treemap(
   type = "index",
   title = "",
   algorithm = "squarified",
-  palette = mosaic_pal[c("orange1", "green2", "blue3", "red1")],
+  palette = mosaic_pal[c("blue3", "red1", "orange1", "green2")],
   draw = FALSE
 )
 
@@ -248,17 +244,39 @@ pct_zarit_fullpartial <-
              na.rm = TRUE) * 100)
 
 valueBox(
-  value = pct_zarit_full,
-  caption = "percent of patients<br>with fully completed Zarit",
-  color = ifelse(pct_zarit_full < 80, mosaic_col("orange3"), mosaic_col("green1")),
-  icon = "glyphicon-heart-empty"
+  value = paste0(pct_zarit_full, "%"),
+  caption = "patients with fully completed Zarit",
+  color = ifelse(pct_zarit_full < 80, mosaic_col("orange3"), mosaic_col("green2")),
+  icon = "ion-person-stalker"
 )
 
 ```
 
-### Specimen Log Compliance at Discharge
+### Specimen Log Compliance at Discharge (% of Patients)
 
-```{r}
+```{r specimen_compliance}
+specimen_plot <- ggplot(data = specimen_rsns,
+                        aes(group = Color, x = Reason, y = Percent)) +
+  geom_bar(aes(alpha = (Reason == "Compliant"), fill = Color),
+           position = "dodge", stat = "identity") +
+  scale_y_continuous(limits = c(0, 100),
+                     breaks = seq(0, 100, 50),
+                     labels = paste0(seq(0, 100, 50), "%")) +
+  scale_fill_manual(values = c(mosaic_col("blue3"), "#5F0395"), guide = FALSE) +
+  scale_alpha_manual(values = c(0.65, 1)) +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.title = element_blank(),
+        axis.text = element_text(size = 10),
+        panel.background = element_rect(fill = NA, color = "gray80"),
+        panel.spacing = unit(2, "lines"))
+
+x <- y <- list(title = NULL)
+
+specimen_plot %>%
+  ggplotly(tooltip = c("x", "y", "group")) %>%
+  layout(xaxis = x, yaxis = y)
 
 ```
 
