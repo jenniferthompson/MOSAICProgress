@@ -4,8 +4,20 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
-    theme: cerulean
+    theme: cosmo
+    logo: favicon_48x48.png
+    favicon: favicon_48x48.png
 ---
+
+<style>                     
+.navbar {
+  background-color:#003D79;
+  border-color:white;
+}
+.navbar-brand {
+color:white!important;
+}
+</style>   
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
@@ -193,10 +205,10 @@ hc_tm_exc
 Phase I (In-Hospital)
 =====================================
 
-Column {data-width=300}
+Column {data-width=500}
 -----------------------------------------------------------------------
 
-### Current Patient Status
+### Current In-Hospital Status
 
 ```{r current_status}
 ## List of patients currently in hospital
@@ -222,7 +234,7 @@ hc_tm_status <- hctreemap(
   levels = list(levelIsConstant = "false"),
   dataLabels = list(style = list(color = "white",
                                  textOutline = "0px contrast",
-                                 fontSize = "8px"))
+                                 fontSize = "12px"))
 ) %>%
   hc_subtitle(
     text = paste("Patients currently in hospital:", pts_inhosp_text),
@@ -246,7 +258,7 @@ pct_zarit_fullpartial <-
 valueBox(
   value = paste0(pct_zarit_full, "%"),
   caption = "patients with fully completed Zarit",
-  color = ifelse(pct_zarit_full < 80, mosaic_col("orange3"), mosaic_col("green2")),
+  color = ifelse(pct_zarit_full < 80, mosaic_col("orange3"), mosaic_col("green3")),
   icon = "ion-person-stalker"
 )
 
@@ -280,20 +292,73 @@ specimen_plot %>%
 
 ```
 
-Column {data-width=700 .tabset}
+Column {data-width=500}
 -----------------------------------------------------------------------
+### **Accelerometer Central** {data-height=30}
 
-### Accelerometer Use Snapshot
+### Accelerometer Snapshot: Patient-Days
 
-```{r}
+```{r accel_snapshot_days}
+## -- Patient-days accelerometer was removed for any reason --------------------
+pct_accel_rm <- round((n_accel_rm / n_accel_days) * 100)
+days_no_accel <- n_hosp_days - n_accel_days
+
+accel_text <- ifelse(
+  days_no_accel == 0,
+  "days accelerometer removed >=1 time",
+  paste0(
+    "days accelerometer removed >=1 time<br><br><b>Note</b>: ",
+    days_no_accel, " days had no accelerometer data entered."
+  )
+)
+
+valueBox(
+  value = paste0(pct_accel_rm, "%"),
+  caption = accel_text,
+  color = mosaic_col("orange2"),
+  icon = "fa-times"
+)
 
 ```
 
-### Accelerometer Use Over Time
+### Accelerometer Snapshot: Patients
 
-```{r}
+```{r accel_snapshot_pts}
+
+## -- Patients for whom accelerometer was permanently removed ------------------------
+pct_accel_permrm <- round((n_accel_permrm / n_enrolled) * 100)
+
+valueBox(
+  value = paste0(pct_accel_permrm, "%"),
+  caption = "patients with accelerometer permanently removed",
+  color = mosaic_col("red4"),
+  icon = "fa-times-circle"
+)
 
 ```
+
+### On Days Accelerometer Was Removed, How Many Times?
+
+```{r times_accel_removed}
+accel_rm_atleast1 <- accel_rm_df %>%
+  filter(bed_device_num > 0) %>%
+  rename(Times = bed_device_num)
+
+accel_rm_hist <- ggplot(data = accel_rm_atleast1, aes(x = Times)) +
+  geom_histogram(fill = mosaic_col("blue1"), alpha = 0.5, binwidth = 1) +
+  scale_x_continuous(breaks = 1:8, labels = 1:8) +
+  theme_minimal() +
+  theme(axis.title = element_blank())
+
+accel_rm_hist %>%
+  ggplotly(tooltip = c("x", "y"))
+
+```
+
+### {data-height=200}
+<p style="position:absolute; bottom:0; right:0;">
+  <img src="Graphics/tiny_MOSAIC_short.png">
+</p>
 
 Phase II (Follow-Up)
 =====================================

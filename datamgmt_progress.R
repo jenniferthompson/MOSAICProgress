@@ -236,3 +236,33 @@ specimen_rsns <- specimen_df %>%
   ungroup() %>%
   mutate(Percent = (n_reason / n_enrolled) * 100)
 
+## -- Accelerometer info -------------------------------------------------------
+
+## Patient-days
+## On what percentage of patient-days has the accelerometer been removed?
+n_hosp_days <- sum(!is.na(inhosp_df$daily_date))
+
+## Get number of days with accelerometer info
+n_accel_days <- sum(!is.na(inhosp_df$bed_device_num))
+
+## Get number of days accelerometer was removed at least once
+n_accel_rm <- sum(inhosp_df$bed_device_num > 0, na.rm = TRUE)
+
+## Patients with device permanently removed
+pts_accel_rm <- inhosp_df %>%
+  dplyr::select(id, starts_with("bed_remove_why")) %>%
+  gather(key = time, value = reason, bed_remove_why_1:bed_remove_why_8) %>%
+  filter(!is.na(reason)) %>%
+  unique()
+
+n_accel_permrm <- sum(pts_accel_rm$reason == "Permanent discontinuation")
+
+## -- Number of times/day accelerometer was removed ----------------------------
+accel_rm_df <- inhosp_df %>%
+  filter(!is.na(daily_date)) %>%
+  dplyr::select(id, daily_date, bed_device_num) %>%
+  separate(daily_date, into = c("year", "month", "day"), sep = "-") %>%
+  mutate(mabb = month.abb[as.numeric(month)],
+         myear = paste(month, year, sep = "-"),
+         myear_char = ifelse(mabb == "Mar", paste(mabb, year), mabb))
+
