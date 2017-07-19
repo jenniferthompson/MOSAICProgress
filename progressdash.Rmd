@@ -180,7 +180,7 @@ tm_exc <- treemap(dtf = exc_cumul,
                   type = "index",
                   title = "",
                   algorithm = "squarified",
-                  palette = mosaic_pal[c("orange1", "green2", "blue3", "red1")],
+                  palette = mosaic_pal[c("orange1", "green2", "blue3", "green4", "red1")],
                   draw = FALSE)
 
 hc_tm_exc <- hctreemap(
@@ -275,7 +275,7 @@ specimen_plot <- ggplot(data = specimen_rsns,
                      breaks = seq(0, 100, 50),
                      labels = paste0(seq(0, 100, 50), "%")) +
   scale_fill_manual(values = c(mosaic_col("blue3"), "#5F0395"), guide = FALSE) +
-  scale_alpha_manual(values = c(0.65, 1)) +
+  scale_alpha_manual(values = c(0.65, 0.85)) +
   coord_flip() +
   theme_minimal() +
   theme(legend.position = "none",

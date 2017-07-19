@@ -214,15 +214,19 @@ specimen_df <- inhosp_df %>%
   spread(key = var, value = org_value) %>%
   mutate(drawn = as.numeric(drawn),
          compliant = drawn > 0,
-         Reason = factor(ifelse(compliant, 7,
-                         ifelse(is.na(rsn), NA,
+         ## "Insufficient documentation" if drawn is missing, or if patient is
+         ## noncompliant and reason is missing
+         Reason = factor(ifelse(is.na(drawn), 0,
+                         ifelse(compliant, 7,
+                         ifelse(is.na(rsn), 0,
                          ifelse(rsn == "Low volume", 6,
                          ifelse(rsn == "No access", 5,
                          ifelse(rsn == "Patient/surrogate refused blood draw", 4,
                          ifelse(rsn %in% spec_unavail_levels, 3,
-                         ifelse(rsn == "Not randomized", 2, 1))))))),
-                         levels = 1:7,
-                         labels = c("Other",
+                         ifelse(rsn == "Not randomized", 2, 1)))))))),
+                         levels = 0:7,
+                         labels = c("Incomplete<br>documentation",
+                                    "Other",
                                     "Not randomized",
                                     "Pt unavailable",
                                     "Refusal",
@@ -243,7 +247,7 @@ specimen_rsns <- specimen_df %>%
 n_hosp_days <- sum(!is.na(inhosp_df$daily_date))
 
 ## Get number of days with accelerometer info
-n_accel_days <- sum(!is.na(inhosp_df$bed_device_num))
+n_accel_days <- with(inhosp_df, sum(!is.na(bed_device_num) & !is.na(daily_date)))
 
 ## Get number of days accelerometer was removed at least once
 n_accel_rm <- sum(inhosp_df$bed_device_num > 0, na.rm = TRUE)
