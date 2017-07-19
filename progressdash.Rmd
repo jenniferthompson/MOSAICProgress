@@ -81,11 +81,11 @@ Column {data-width=700}
 ```{r screening}
 screen_plot <- ggplot(data = screening_summary, aes(x = myear)) +
   geom_bar(aes(y = Enrolled),
-           fill = mosaic_col("red4"), stat = "identity", alpha = 0.9) +
+           fill = mosaic_col("green4"), stat = "identity", alpha = 0.75) +
   geom_bar(aes(y = Approached),
-           fill = mosaic_col("red4"), stat = "identity", alpha = 0.6) +
+           fill = mosaic_col("orange3"), stat = "identity", alpha = 0.75) +
   geom_bar(aes(y = Screened),
-           fill = mosaic_col("red4"), stat = "identity", alpha = 0.3) +
+           fill = mosaic_col("red4"), stat = "identity", alpha = 0.75) +
   scale_x_discrete(name = NULL, labels = screening_summary$myear_char) +
   scale_y_continuous(name = NULL) +
   theme_minimal() +
@@ -202,7 +202,7 @@ hc_tm_exc
   <img src="Graphics/tiny_MOSAIC_short.png">
 </p>
 
-Phase I (In-Hospital)
+In-Hospital
 =====================================
 
 Column {data-width=500}
@@ -360,7 +360,7 @@ accel_rm_hist %>%
   <img src="Graphics/tiny_MOSAIC_short.png">
 </p>
 
-Phase II (Follow-Up)
+Follow-Up
 =====================================
 
 Column {data-width=650}
