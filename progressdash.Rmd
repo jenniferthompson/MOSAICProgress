@@ -85,7 +85,7 @@ screen_plot <- ggplot(data = screening_summary, aes(x = myear)) +
   geom_bar(aes(y = Approached),
            fill = mosaic_col("orange3"), stat = "identity", alpha = 0.75) +
   geom_bar(aes(y = Screened),
-           fill = mosaic_col("red4"), stat = "identity", alpha = 0.75) +
+           fill = mosaic_col("red5"), stat = "identity", alpha = 0.75) +
   scale_x_discrete(name = NULL, labels = screening_summary$myear_char) +
   scale_y_continuous(name = NULL) +
   theme_minimal() +

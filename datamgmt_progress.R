@@ -44,6 +44,11 @@ exc_df <- import_df("MOSAIC_EXC_TOKEN")
 inhosp_df <- inhosp_df[grep("test", tolower(inhosp_df$id), invert = TRUE),]
 exc_df <- exc_df[grep("test", tolower(exc_df$exc_id), invert = TRUE),]
 
+## Data management prep: Create POSIXct versions of most relevant date/times
+inhosp_df <- inhosp_df %>%
+  mutate_at(c("enroll_dttm", "death_dttm", "hospdis_dttm"), ymd_hm) %>%
+  mutate(studywd_dttm = ymd(studywd_dttm))
+
 ################################################################################
 ## Screening and Exclusions
 ################################################################################
@@ -85,7 +90,7 @@ screening_combine <- bind_rows(exc_combine, inhosp_combine) %>%
 
 screening_summary <- screening_combine %>%
   group_by(myear, myear_char) %>%
-  summarise_each(funs(sum), Screened, Approached, Refused, Enrolled)
+  summarise_at(c("Screened", "Approached", "Refused", "Enrolled"), sum)
 
 ## How many patients have been enrolled so far? What is our enrollment goal?
 n_screened <- sum(screening_combine$Screened)
