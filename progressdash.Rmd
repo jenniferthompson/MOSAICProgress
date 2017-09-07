@@ -68,6 +68,10 @@ exc_colors <- c(
   "Other" = mosaic_col("orange3")
 )
 
+## Manually set width, height for screening/enrollment over time plots
+screenplot_wd <- 640
+screenplot_ht <- 325
+
 ```
 
 Screening & Enrollment
@@ -79,46 +83,107 @@ Column {data-width=700}
 ### Patients Screened, Approached, and Enrolled
 
 ```{r screening}
-screen_plot <- ggplot(data = screening_summary, aes(x = myear)) +
-  geom_bar(aes(y = Enrolled),
-           fill = mosaic_col("green4"), stat = "identity", alpha = 0.75) +
-  geom_bar(aes(y = Approached),
-           fill = mosaic_col("orange3"), stat = "identity", alpha = 0.75) +
-  geom_bar(aes(y = Screened),
-           fill = mosaic_col("red5"), stat = "identity", alpha = 0.75) +
-  scale_x_discrete(name = NULL, labels = screening_summary$myear_char) +
-  scale_y_continuous(name = NULL) +
-  theme_minimal() +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        axis.text.x = element_text(angle = 45, vjust = 1))
+# ## With plotly v 4.7, sizing got weird; switch to native plotly
+# screen_plot <- ggplot(data = screening_summary, aes(x = myear)) +
+#   geom_bar(aes(y = Screened),
+#            fill = mosaic_col("red5"), stat = "identity", alpha = 0.75) +
+#   geom_bar(aes(y = Approached),
+#            fill = mosaic_col("orange3"), stat = "identity", alpha = 0.75) +
+#   geom_bar(aes(y = Enrolled),
+#            fill = mosaic_col("green4"), stat = "identity", alpha = 0.75) +
+#   scale_x_discrete(name = NULL, labels = screening_summary$myear_char) +
+#   scale_y_continuous(name = NULL) +
+#   theme_minimal() +
+#   theme(panel.grid.major.x = element_blank(),
+#         panel.grid.minor.x = element_blank(),
+#         axis.text.x = element_text(angle = 45, vjust = 1))
 
-x <- y <- list(title = NULL)
+# screen_plot %>%
+#   ggplotly(tooltip = c("y")) %>%
+#   layout(xaxis = x, yaxis = y)
 
-screen_plot %>%
-  ggplotly(tooltip = c("y")) %>%
-  layout(xaxis = x, yaxis = y)
+x_screen <- list(tickvals = screening_summary$myear,
+                 ticktext = screening_summary$myear_char,
+                 title = "")
+y <- list(title = "")
+
+screen_plotly <- plot_ly(
+  data = screening_summary,
+  x = ~ myear,
+  y = ~ Screened,
+  type = "bar",
+  name = "Screened",
+  color = I(mosaic_col("red5")),
+  alpha = 0.75
+) %>%
+  add_bars(
+    y = ~ Approached,
+    name = "Approached",
+    color = I(mosaic_col("orange3"))
+  ) %>%
+  add_bars(
+    y = ~ Enrolled,
+    name = "Enrolled",
+    color = I(mosaic_col("green4"))
+  )
+
+screen_plotly %>%
+  layout(legend = list(x = 0, y = 0.95),
+         xaxis = x_screen, yaxis = y)
 
 ```
 
 ### Study Exclusions (% of All Patients Excluded)
 
 ```{r exclusions_over_time}
-exc_plot <- ggplot(data = exc_over_time,
-                   aes(x = myear, y = Percent, group = Reason, colour = Reason)) +
-  geom_line(alpha = 0.6) +
-  geom_point(alpha = 0.6) +
-  scale_colour_manual(values = exc_colors) +
-  scale_x_discrete(labels = unique(exc_over_time$myear_char)) +
-  scale_y_continuous(breaks = seq(0, 100, 20),
-                     labels = paste0(seq(0, 100, 20), "%")) +
-  theme_minimal() +
-  theme(legend.position = "none",
-        axis.text.x = element_text(angle = 45, vjust = 1))
+## With plotly v 4.7, sizing got weird; switch to native plotly
+# exc_plot <- ggplot(data = exc_over_time,
+#                    aes(x = myear, y = Percent, group = Reason, colour = Reason)) +
+#   geom_line(alpha = 0.6) +
+#   geom_point(alpha = 0.6) +
+#   scale_colour_manual(values = exc_colors) +
+#   scale_x_discrete(labels = unique(exc_over_time$myear_char)) +
+#   scale_y_continuous(breaks = seq(0, 100, 20),
+#                      labels = paste0(seq(0, 100, 20), "%")) +
+#   theme_minimal() +
+#   theme(legend.position = "none",
+#         axis.text.x = element_text(angle = 45, vjust = 1))
+# 
+# exc_plot %>%
+#   ggplotly(tooltip = c("group", "y")) %>% #,
+#            # width = screenplot_wd, height = screenplot_ht) %>%
+#   layout(xaxis = x, yaxis = y)
 
-exc_plot %>%
-  ggplotly(tooltip = c("group", "y")) %>%
-  layout(xaxis = x, yaxis = y)
+## plotly needs x value to be numeric to sort properly?
+exc_myears <- sort(unique(exc_over_time$myear))
+exc_myears_num <- 1:length(exc_myears)
+names(exc_myears_num) <- exc_myears
+
+exc_over_time <- exc_over_time %>%
+  mutate(myear_num = exc_myears_num[myear])
+
+x_exc <- list(tickvals = as.numeric(exc_myears_num),
+              ticktext = unique(exc_over_time$myear_char),
+              title = "")
+y_exc <- list(tickvals = seq(0, 100, 20),
+              ticktext = paste0(seq(0, 100, 20), "%"),
+              title = "Percent of Exclusions")
+
+exc_plotly <- plot_ly(
+  data = exc_over_time,
+  x = ~ myear_num,
+  y = ~ Percent,
+  type = "scatter",
+  mode = "lines+markers",
+  color = ~ Reason,
+  colors = exc_colors,
+  alpha = 0.6
+)
+
+exc_plotly %>%
+  layout(showlegend = FALSE,
+         xaxis = x_exc,
+         yaxis = y_exc)
 
 ```
 
@@ -136,24 +201,6 @@ screening_statement <- sprintf(
   round(pct_refused*100),
   round(pct_enrolled*100)
 )
-
-# enroll_gauge <- highchart() %>%
-#   hc_chart(type = "solidgauge") %>%
-#   hc_plotOptions(
-#     solidgauge = list(
-#       dataLabels = list(y = -30, borderWidth = 0, style = list(fontSize = "25px"))
-#     )
-#   ) %>%
-#   hc_pane(startAngle = -90, endAngle = 90,
-#           size = "150%",
-#           center = c("50%", "90%"),
-#           background = list(innerRadius = "60%",
-#                             outerRadius = "100%",
-#                             shape = "arc")) %>%
-#   hc_add_series(name = "Enrolled",
-#                 data = list(list(y = n_enrolled, color = mosaic_col("green1")))) %>%
-#   hc_yAxis(min = 0, max = n_goal, tickInterval = 100, minorTickInterval = "null",
-#            labels = list(distance = 15))
 
 enroll_gauge <- gauge(
   value = n_enrolled,
@@ -387,3 +434,11 @@ Column {data-width=350}
 
 ```
 
+Technical Info
+=====================================
+R version `r devtools::session_info()$platform$version`. Packages:
+
+```{r}
+DT::datatable(devtools::session_info()$packages)
+
+```
