@@ -46,8 +46,16 @@ exc_df <- exc_df[grep("test", tolower(exc_df$exc_id), invert = TRUE),]
 
 ## Data management prep: Create POSIXct versions of most relevant date/times
 inhosp_df <- inhosp_df %>%
-  mutate_at(c("enroll_dttm", "death_dttm", "hospdis_dttm"), ymd_hm) %>%
-  mutate(studywd_dttm = ymd(studywd_dttm))
+  mutate_at(c("enroll_dttm", "death_dttm", "hospdis_dttm"),
+            c("as_date", "ymd_hm")) %>%
+  rename(enroll_date = enroll_dttm_as_date,
+         enroll_dt = enroll_dttm_ymd_hm,
+         death_date = death_dttm_as_date,
+         death_dt = death_dttm_ymd_hm,
+         hospdis_date = hospdis_dttm_as_date,
+         hospdis_dt = hospdis_dttm_ymd_hm) %>%
+  mutate(studywd_date = ymd(studywd_dttm)) %>%
+  select(-enroll_dttm, -death_dttm, -hospdis_dttm, -studywd_dttm)
 
 ################################################################################
 ## Screening and Exclusions
@@ -76,7 +84,7 @@ exc_combine <- exc_df %>%
 
 inhosp_combine <- inhosp_df %>%
   filter(redcap_event_name == 'Enrollment /Trial Day 1') %>%
-  separate(enroll_dttm, into = c("year", "month", "day", "time"), sep = "-| ") %>%
+  separate(enroll_dt, into = c("year", "month", "day", "time"), sep = "-| ") %>%
   mutate(Screened = TRUE,
          Approached = TRUE,
          Refused = FALSE,
@@ -141,7 +149,8 @@ exc_over_time <- exc_df_long %>%
   group_by(myear, myear_char, Reason) %>%
   summarise(n_this_exclusion = sum(was_excluded)) %>%
   left_join(exc_per_month, by = "myear") %>%
-  mutate(Percent = round((n_this_exclusion / n_all_exclusions)*100))
+  mutate(Percent = round((n_this_exclusion / n_all_exclusions)*100)) %>%
+  ungroup()
 
 ## -- Treemap for cumulative exclusions ----------------------------------------
 exc_cumul <- exc_df_long %>%
@@ -168,7 +177,7 @@ exc_cumul <- exc_df_long %>%
              "No surrogate within 72h",
              "Patient/surrogate refusal"
            ) ~ "Informed consent",
-           TRUE ~ "Other"
+           TRUE ~ "Other exclusions"
          ))
 
 ################################################################################
@@ -178,9 +187,9 @@ exc_cumul <- exc_df_long %>%
 ## -- Currently: died/withdrew in hospital, discharged, still in hospital ------
 all_enrolled <- inhosp_df %>%
   filter(redcap_event_name == "Enrollment /Trial Day 1") %>%
-  mutate(inhosp_status = factor(ifelse(!is.na(hospdis_dttm), 1,
-                                ifelse(!is.na(death_dttm), 2,
-                                ifelse(!is.na(studywd_dttm), 3, 4))),
+  mutate(inhosp_status = factor(ifelse(!is.na(hospdis_date), 1,
+                                ifelse(!is.na(death_date), 2,
+                                ifelse(!is.na(studywd_date), 3, 4))),
                                 levels = 1:4,
                                 labels = c("Discharged alive",
                                            "Died in hospital",
@@ -202,6 +211,64 @@ all_enrolled <- all_enrolled %>%
                                  labels = c("Fully completed",
                                             "Partially completed",
                                             "Not taken")))
+
+## -- Specimen log: compliance = >0 tubes drawn on days 1, 3, 5, discharge -----
+## Get "proper" study *dates* for each ID
+study_dates <- tibble(
+  study_date =
+    map(pull(all_enrolled, enroll_date), ~ seq(., by = 1, length.out = 30)) %>%
+    flatten_int() %>%
+    as.Date(origin = "1970-1-1")
+)
+
+## Create "dummy" data frame with ID, study event, study day, study date up to
+## day 30 for each patient
+timeline_df <- tibble(
+  id = rep(sort(unique(all_enrolled$id)), each = 30),
+  study_day = rep(1:30, length(unique(all_enrolled$id)))
+) %>%
+  left_join(subset(all_enrolled,
+                   select = c(id, enroll_date, death_date, hospdis_date,
+                              studywd_date)),
+            by = "id") %>%
+  bind_cols(study_dates) %>%
+  ## Add "status" for each day:
+  ##  - deceased
+  ##  - discharged
+  ##  - withdrawn
+  ##  - in hospital
+  ## With additional indicator for "transition day", or days on which patients
+  ## died, were discharged, or withdrew. These days may or may not have data
+  ## collected (eg, if patient died in evening, data may have been collected,
+  ## but if patient died in morning, likely that no data was collected).
+  mutate(redcap_event_name = ifelse(study_day == 1, "Enrollment /Trial Day 1",
+                                    paste("Trial Day", study_day)),
+         transition_day = (!is.na(death_date) & study_date == death_date) |
+           (!is.na(studywd_date) & study_date == studywd_date) |
+           (!is.na(hospdis_date) & study_date == hospdis_date),
+         study_status = factor(
+           ifelse(!is.na(death_date) & study_date >= death_date, 4,
+           ifelse(!is.na(hospdis_date) & study_date >= hospdis_date, 3,
+           ifelse(!is.na(studywd_date) & study_date >= studywd_date, 2, 1))),
+           levels = 1:4,
+           labels = c("In hospital",
+                      "Withdrawn",
+                      "Discharged",
+                      "Deceased")))
+  
+## Data set for specimens: merge specimen variables onto study days 1, 3, 5, 30
+## (for specimen log, 30 = day of discharge, even if patient was discharged
+## earlier)
+specimen_df <- timeline_df %>%
+  select(id, redcap_event_name, study_day, study_date, study_status,
+         transition_day) %>%
+  left_join(select(inhosp_df, id, redcap_event_name, study_day_specimen,
+                   blue_drawn, blue_rsn,
+                   purple_drawn, purple_rsn),
+            by = c("id", "redcap_event_name")) %>%
+  filter((study_day %in% c(1, 3, 5) &
+            (study_status == "In hospital" | transition_day)) |
+           study_day == 30)
 
 ## -- Specimen log: compliance = >0 tubes drawn at discharge ("day 30") --------
 ## Combine levels for patient discharged, died or withdrew before blood draw
