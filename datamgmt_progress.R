@@ -45,17 +45,15 @@ inhosp_df <- inhosp_df[grep("test", tolower(inhosp_df$id), invert = TRUE),]
 exc_df <- exc_df[grep("test", tolower(exc_df$exc_id), invert = TRUE),]
 
 ## Data management prep: Create POSIXct versions of most relevant date/times
+dtvars <- c("enroll_dttm", "death_dttm", "hospdis_dttm")
+
 inhosp_df <- inhosp_df %>%
-  mutate_at(c("enroll_dttm", "death_dttm", "hospdis_dttm"),
-            c("as_date", "ymd_hm")) %>%
-  rename(enroll_date = enroll_dttm_as_date,
-         enroll_dt = enroll_dttm_ymd_hm,
-         death_date = death_dttm_as_date,
-         death_dt = death_dttm_ymd_hm,
-         hospdis_date = hospdis_dttm_as_date,
-         hospdis_dt = hospdis_dttm_ymd_hm) %>%
+  mutate_at(dtvars, "ymd_hm") %>%
+  mutate_at(dtvars, funs(date = "as_date")) %>%
+  rename_at(dtvars, ~ gsub("tm$", "", .)) %>%
+  rename_at(paste0(dtvars, "_date"), ~ gsub("_dttm", "", ., fixed = TRUE)) %>%
   mutate(studywd_date = ymd(studywd_dttm)) %>%
-  select(-enroll_dttm, -death_dttm, -hospdis_dttm, -studywd_dttm)
+  select(-studywd_dttm)
 
 ################################################################################
 ## Screening and Exclusions
@@ -279,7 +277,7 @@ spec_unavail_levels <- paste(
 )
 
 specimen_df <- inhosp_df %>%
-  filter(redcap_event_name == "Trial Day 30") %>%
+  filter(redcap_event_name == "Discharge Day") %>%
   dplyr::select(id, blue_drawn, blue_rsn, purple_drawn, purple_rsn) %>%
   gather(key = org_var, value = org_value, blue_drawn:purple_rsn) %>%
   separate(org_var, into = c("Color", "var"), sep = "_") %>%
