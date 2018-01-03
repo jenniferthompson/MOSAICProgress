@@ -102,14 +102,22 @@ Column {data-width=700}
 #   ggplotly(tooltip = c("y")) %>%
 #   layout(xaxis = x, yaxis = y)
 
-x_screen <- list(tickvals = screening_summary$myear,
-                 ticktext = screening_summary$myear_char,
+## Want figure to start in March 2017
+screening_myears <- unique(screening_summary$myear)
+screening_myears_num <- 1:length(screening_myears)
+names(screening_myears_num) <- screening_myears
+
+screening_summary <- screening_summary %>%
+  mutate(myear_num = screening_myears_num[myear])
+
+x_screen <- list(tickvals = as.numeric(screening_myears_num),
+                 ticktext = unique(screening_summary$myear_char),
                  title = "")
 y <- list(title = "")
 
 screen_plotly <- plot_ly(
   data = screening_summary,
-  x = ~ myear,
+  x = ~ myear_num,
   y = ~ Screened,
   type = "bar",
   name = "Screened",

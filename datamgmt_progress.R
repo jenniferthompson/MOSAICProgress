@@ -71,9 +71,7 @@ inhosp_df <- inhosp_df %>%
 
 exc_combine <- exc_df %>%
   separate(exc_date, into = c("year", "month", "day"), sep = "-") %>%
-  mutate(myear = paste(month, year, sep = "-"),
-         myear_char = paste(month.abb[as.numeric(month)], year),
-         Screened = TRUE,
+  mutate(Screened = TRUE,
          Approached = !is.na(exc_rsn_14),
          Refused = !is.na(exc_rsn_14),
          Enrolled = FALSE) %>%
@@ -91,12 +89,13 @@ inhosp_combine <- inhosp_df %>%
 
 screening_combine <- bind_rows(exc_combine, inhosp_combine) %>%
   mutate(mabb = month.abb[as.numeric(month)],
-         myear = paste(month, year, sep = "-"),
+         myear = paste(year, month, sep = "-"),
          myear_char = ifelse(mabb == "Mar", paste(mabb, year), mabb))
 
 screening_summary <- screening_combine %>%
   group_by(myear, myear_char) %>%
-  summarise_at(c("Screened", "Approached", "Refused", "Enrolled"), sum)
+  summarise_at(c("Screened", "Approached", "Refused", "Enrolled"), sum) %>%
+  arrange(myear)
 
 ## How many patients have been enrolled so far? What is our enrollment goal?
 n_screened <- sum(screening_combine$Screened)
@@ -114,7 +113,7 @@ exc_df_long <- exc_df %>%
   separate(exc_date, into = c("year", "month", "day"), sep = "-") %>%
   mutate(was_excluded = !is.na(was_excluded),
          mabb = month.abb[as.numeric(month)],
-         myear = paste(month, year, sep = "-"),
+         myear = paste(year, month, sep = "-"),
          myear_char = ifelse(mabb == "Mar", paste(mabb, year), mabb),
          Reason = ifelse(exc_reason == "exc_rsn_1", "Rapidly resolving organ failure",
                   ifelse(exc_reason == "exc_rsn_2", ">5 hospital days in last 30",
@@ -148,7 +147,8 @@ exc_over_time <- exc_df_long %>%
   summarise(n_this_exclusion = sum(was_excluded)) %>%
   left_join(exc_per_month, by = "myear") %>%
   mutate(Percent = round((n_this_exclusion / n_all_exclusions)*100)) %>%
-  ungroup()
+  ungroup() %>%
+  arrange(myear)
 
 ## -- Treemap for cumulative exclusions ----------------------------------------
 exc_cumul <- exc_df_long %>%
@@ -337,6 +337,6 @@ accel_rm_df <- inhosp_df %>%
   dplyr::select(id, daily_date, bed_device_num) %>%
   separate(daily_date, into = c("year", "month", "day"), sep = "-") %>%
   mutate(mabb = month.abb[as.numeric(month)],
-         myear = paste(month, year, sep = "-"),
+         myear = paste(year, month, sep = "-"),
          myear_char = ifelse(mabb == "Mar", paste(mabb, year), mabb))
 
