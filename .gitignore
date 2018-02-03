@@ -4,3 +4,8 @@
 .Ruserdata
 .Renviron
 *.html
+*.md
+*.txt
+figures/
+*.js
+
