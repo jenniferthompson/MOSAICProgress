@@ -246,6 +246,68 @@ In-Hospital
 Column {data-width=500}
 -----------------------------------------------------------------------
 
+### Pre-Hospital Questionnaires {data-height=40}
+
+### Prehospital Surrogate Battery Completion Rate
+
+```{r ph_comp}
+pct_surrogate_comp <-
+  round(mean(all_enrolled$ph_surrogate_comp, na.rm = TRUE) * 100)
+pct_caregiver_comp <-
+  round(mean(all_enrolled$ph_caregiver_comp, na.rm = TRUE) * 100)
+
+```
+
+```{r ph_surrogate}
+valueBox(
+  value = paste0(pct_surrogate_comp, "%"),
+  caption = "fully completed surrogate questionnaires<br>(General, PASE, ADLs, LS, employment, AUDIT, IQCODE)",
+  color = ifelse(pct_surrogate_comp < 80, mosaic_col("orange3"), mosaic_col("green3")),
+  icon = "ion-person-stalker"
+)
+
+```
+
+### Prehospital Caregiver Battery Completion Rate
+
+```{r ph_caregiver}
+valueBox(
+  value = paste0(pct_caregiver_comp, "%"),
+  caption = "fully completed caregiver questionnaires<br>(Zarit, Memory & Behavior)",
+  color = ifelse(pct_caregiver_comp < 80, mosaic_col("orange3"), mosaic_col("green3")),
+  icon = "ion-heart"
+)
+
+```
+
+### Specimen Log Compliance at Discharge (% of Patients)
+
+```{r specimen_compliance}
+specimen_plot <- ggplot(data = specimen_rsns,
+                        aes(group = Color, x = Reason, y = Percent)) +
+  geom_bar(aes(alpha = (Reason == "Compliant"), fill = Color),
+           position = "dodge", stat = "identity") +
+  scale_y_continuous(limits = c(0, 100),
+                     breaks = seq(0, 100, 50),
+                     labels = paste0(seq(0, 100, 50), "%")) +
+  scale_fill_manual(values = c(mosaic_col("blue3"), "#5F0395"), guide = FALSE) +
+  scale_alpha_manual(values = c(0.65, 0.85)) +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.title = element_blank(),
+        axis.text = element_text(size = 10),
+        panel.background = element_rect(fill = NA, color = "gray80"),
+        panel.spacing = unit(2, "lines"))
+
+x <- y <- list(title = NULL)
+
+specimen_plot %>%
+  ggplotly(tooltip = c("x", "y", "group")) %>%
+  layout(xaxis = x, yaxis = y)
+
+```
+
 ### Current In-Hospital Status
 
 ```{r current_status}
@@ -283,56 +345,9 @@ hc_tm_status
 
 ```
 
-### Zarit Caregiver Completion Rate
-
-```{r zarit_full}
-pct_zarit_full <-
-  round(mean(all_enrolled$zarit_comp_raw == "Fully completed", na.rm = TRUE) * 100)
-pct_zarit_fullpartial <-
-  round(mean(all_enrolled$zarit_comp_raw %in%
-               paste(c("Fully", "Partially"), "completed"),
-             na.rm = TRUE) * 100)
-
-valueBox(
-  value = paste0(pct_zarit_full, "%"),
-  caption = "patients with fully completed Zarit",
-  color = ifelse(pct_zarit_full < 80, mosaic_col("orange3"), mosaic_col("green3")),
-  icon = "ion-person-stalker"
-)
-
-```
-
-### Specimen Log Compliance at Discharge (% of Patients)
-
-```{r specimen_compliance}
-specimen_plot <- ggplot(data = specimen_rsns,
-                        aes(group = Color, x = Reason, y = Percent)) +
-  geom_bar(aes(alpha = (Reason == "Compliant"), fill = Color),
-           position = "dodge", stat = "identity") +
-  scale_y_continuous(limits = c(0, 100),
-                     breaks = seq(0, 100, 50),
-                     labels = paste0(seq(0, 100, 50), "%")) +
-  scale_fill_manual(values = c(mosaic_col("blue3"), "#5F0395"), guide = FALSE) +
-  scale_alpha_manual(values = c(0.65, 0.85)) +
-  coord_flip() +
-  theme_minimal() +
-  theme(legend.position = "none",
-        axis.title = element_blank(),
-        axis.text = element_text(size = 10),
-        panel.background = element_rect(fill = NA, color = "gray80"),
-        panel.spacing = unit(2, "lines"))
-
-x <- y <- list(title = NULL)
-
-specimen_plot %>%
-  ggplotly(tooltip = c("x", "y", "group")) %>%
-  layout(xaxis = x, yaxis = y)
-
-```
-
 Column {data-width=500}
 -----------------------------------------------------------------------
-### **Accelerometer Central** {data-height=10}
+### **Accelerometer Central** {data-height=40}
 
 ### Accelerometer Snapshot: Patient-Days
 
@@ -343,7 +358,7 @@ days_no_accel <- n_hosp_days - n_accel_days
 
 accel_text <- ifelse(
   days_no_accel == 0,
-  "days accelerometer removed >=1 time",
+  "days accelerometer removed >=1 time<br> <br> ",
   paste0(
     "days accelerometer removed >=1 time<br><br><b>Note</b>: ",
     days_no_accel, " days had no accelerometer data entered."
@@ -368,7 +383,7 @@ pct_accel_permrm <- round((n_accel_permrm / n_enrolled) * 100)
 
 valueBox(
   value = paste0(pct_accel_permrm, "%"),
-  caption = "patients with accelerometer permanently removed",
+  caption = "patients with accelerometer permanently removed<br> <br> ",
   color = mosaic_col("red4"),
   icon = "fa-times-circle"
 )
@@ -431,9 +446,12 @@ Column {data-width=350}
 
 ```
 
-Technical Info
+Study & Technical Info
 =====================================
-R version `r devtools::session_info()$platform$version`. Packages:
+
+MOSAIC is funded by the National Institutes of Health. Please see our listing on [clinicaltrials.gov](https://clinicaltrials.gov/ct2/show/NCT03115840).
+
+This dashboard uses R version `r devtools::session_info()$platform$version`. Packages:
 
 ```{r}
 DT::datatable(devtools::session_info()$packages)
