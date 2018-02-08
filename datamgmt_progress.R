@@ -214,17 +214,28 @@ status_count <- all_enrolled %>%
   group_by(inhosp_status) %>%
   summarise(n_status = n())
 
-## -- Zarit: completion rate (use raw data, not just "completed?") -------------
-all_enrolled$zarit_questions <-
-  rowSums(!is.na(all_enrolled[,paste0("zarit_", 1:12)]))
+## -- Completion of pre-hospital surrogate, caregiver batteries ----------------
+## Surrogate battery: General questions, PASE, basic/IADLs, life space,
+##   employment questionnaire, AUDIT, IQCODE
+## Caregiver battery: Zarit, memory/behavior checklist
+## "Complete" = every section fully or partially completed
+surrogate_compvars <- paste0(
+  c("gq", "pase", "adl", "ls", "emp", "audit", "iqcode"),
+  "_comp_ph"
+)
+caregiver_compvars <- paste0(c("zarit", "memory"), "_comp_ph")
 
 all_enrolled <- all_enrolled %>%
-  mutate(zarit_comp_raw = factor(ifelse(zarit_questions == 12, 1,
-                                 ifelse(zarit_questions > 0, 2, 3)),
-                                 levels = 1:3,
-                                 labels = c("Fully completed",
-                                            "Partially completed",
-                                            "Not taken")))
+  mutate_at(
+    vars(one_of(c(surrogate_compvars, caregiver_compvars))),
+    funs(!is.na(.) & . %in% c("Yes, completely", "Yes, partially"))
+  ) %>%
+  mutate(
+    ph_surrogate_comp =
+      rowSums(.[, surrogate_compvars]) == length(surrogate_compvars),
+    ph_caregiver_comp =
+      rowSums(.[, caregiver_compvars]) == length(caregiver_compvars)
+  )
 
 ## -- Specimen log: compliance = >0 tubes drawn on days 1, 3, 5, discharge -----
 ## Get "proper" study *dates* for each ID
