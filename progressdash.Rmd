@@ -19,6 +19,13 @@ color:white!important;
 }
 </style>   
 
+<style type="text/css">
+
+.chart-title {  /* chart_title  */
+   font-size: 15px
+
+</style>
+
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(plotly)
@@ -63,6 +70,7 @@ exc_colors <- c(
   "Patient/surrogate refusal" = mosaic_col("green4"),
   "No surrogate within 72h" = mosaic_col("green1"),
   "Attending refusal" = mosaic_col("green3"),
+  ">72h eligibility prior to screening" = mosaic_col("green4"),
   "Lives >150 miles from VUMC" = mosaic_col("orange1"),
   "Study with no co-enrollment" = mosaic_col("orange2"),
   "Other" = mosaic_col("orange3")
@@ -82,26 +90,23 @@ Column {data-width=700}
 
 ### Patients Screened, Approached, and Enrolled
 
+```{r nodate_ids}
+nodate_ids <- unique(c(exc_id_nodate, enroll_id_nodate))
+
+nodate_statement <- ifelse(
+  length(nodate_ids > 0),
+  paste(
+    "These IDs have no exclusion/enrollment date entered and are not included:",
+    paste(nodate_ids, collapse = "; ")
+  ),
+  ""
+)
+
+```
+
+`r nodate_statement`
+
 ```{r screening}
-# ## With plotly v 4.7, sizing got weird; switch to native plotly
-# screen_plot <- ggplot(data = screening_summary, aes(x = myear)) +
-#   geom_bar(aes(y = Screened),
-#            fill = mosaic_col("red5"), stat = "identity", alpha = 0.75) +
-#   geom_bar(aes(y = Approached),
-#            fill = mosaic_col("orange3"), stat = "identity", alpha = 0.75) +
-#   geom_bar(aes(y = Enrolled),
-#            fill = mosaic_col("green4"), stat = "identity", alpha = 0.75) +
-#   scale_x_discrete(name = NULL, labels = screening_summary$myear_char) +
-#   scale_y_continuous(name = NULL) +
-#   theme_minimal() +
-#   theme(panel.grid.major.x = element_blank(),
-#         panel.grid.minor.x = element_blank(),
-#         axis.text.x = element_text(angle = 45, vjust = 1))
-
-# screen_plot %>%
-#   ggplotly(tooltip = c("y")) %>%
-#   layout(xaxis = x, yaxis = y)
-
 ## Want figure to start in March 2017
 screening_myears <- unique(screening_summary$myear)
 screening_myears_num <- 1:length(screening_myears)
@@ -136,7 +141,7 @@ screen_plotly <- plot_ly(
   )
 
 screen_plotly %>%
-  layout(legend = list(x = 0, y = 0.95),
+  layout(legend = list(x = 0, y = 0.95, bgcolor='transparent'),
          xaxis = x_screen, yaxis = y)
 
 ```
@@ -144,24 +149,6 @@ screen_plotly %>%
 ### Study Exclusions (% of All Patients Excluded)
 
 ```{r exclusions_over_time}
-## With plotly v 4.7, sizing got weird; switch to native plotly
-# exc_plot <- ggplot(data = exc_over_time,
-#                    aes(x = myear, y = Percent, group = Reason, colour = Reason)) +
-#   geom_line(alpha = 0.6) +
-#   geom_point(alpha = 0.6) +
-#   scale_colour_manual(values = exc_colors) +
-#   scale_x_discrete(labels = unique(exc_over_time$myear_char)) +
-#   scale_y_continuous(breaks = seq(0, 100, 20),
-#                      labels = paste0(seq(0, 100, 20), "%")) +
-#   theme_minimal() +
-#   theme(legend.position = "none",
-#         axis.text.x = element_text(angle = 45, vjust = 1))
-# 
-# exc_plot %>%
-#   ggplotly(tooltip = c("group", "y")) %>% #,
-#            # width = screenplot_wd, height = screenplot_ht) %>%
-#   layout(xaxis = x, yaxis = y)
-
 ## plotly needs x value to be numeric to sort properly?
 exc_myears <- sort(unique(exc_over_time$myear))
 exc_myears_num <- 1:length(exc_myears)
@@ -222,11 +209,11 @@ enroll_gauge
 
 ```
 
-### Approach & Refusal {data-height=175}
+### Approach & Refusal {data-height=250}
 
 `r screening_statement`
 
-### Cumulative Exclusions (Total: `r nrow(exc_df)`) {data-height=375}
+### Cumulative Exclusions (Total: `r nrow(exc_df)`) {data-height=500}
 
 ```{r exclusions_cumulative}
 tm_exc <- treemap(dtf = exc_cumul,
@@ -251,11 +238,6 @@ hc_tm_exc <- hctreemap(
 hc_tm_exc
 
 ```
-
-### {data-height=200}
-<p style="position:absolute; bottom:0; right:0;">
-  <img src="Graphics/tiny_MOSAIC_short.png">
-</p>
 
 In-Hospital
 =====================================
