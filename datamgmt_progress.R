@@ -69,7 +69,13 @@ inhosp_df <- inhosp_df %>%
 ##      (Inability to obtain informed consent: Patient and/or surrogate refusal)
 ## Enrolled: Included in in-hospital database
 
+## Get list of any patients with no exclusion date entered, then remove them
+exc_id_nodate <- exc_df %>%
+  filter(is.na(exc_date)) %>%
+  pull(exc_id)
+
 exc_combine <- exc_df %>%
+  filter(!is.na(exc_date)) %>%
   separate(exc_date, into = c("year", "month", "day"), sep = "-") %>%
   mutate(Screened = TRUE,
          Approached = !is.na(exc_rsn_14),
@@ -130,8 +136,9 @@ exc_df_long <- exc_df %>%
                   ifelse(exc_reason == "exc_rsn_13", "Attending refusal",
                   ifelse(exc_reason == "exc_rsn_14", "Patient/surrogate refusal",
                   ifelse(exc_reason == "exc_rsn_15", "No surrogate within 72h",
+                  ifelse(exc_reason == "exc_rsn_16", ">72h eligibility prior to screening",
                   ifelse(exc_reason == "exc_rsn_99", "Other",
-                         NA))))))))))))))))) %>%
+                         NA)))))))))))))))))) %>%
   filter(was_excluded)
 
 ## Data set for exclusions over time: Proportion of each exclusion each month
@@ -173,7 +180,8 @@ exc_cumul <- exc_df_long %>%
            .$Reason %in% c(
              "Attending refusal",
              "No surrogate within 72h",
-             "Patient/surrogate refusal"
+             "Patient/surrogate refusal",
+             ">72h eligibility prior to screening"
            ) ~ "Informed consent",
            TRUE ~ "Other exclusions"
          ))
@@ -183,8 +191,16 @@ exc_cumul <- exc_df_long %>%
 ################################################################################
 
 ## -- Currently: died/withdrew in hospital, discharged, still in hospital ------
+## Get IDs for anyone with no enrollment date entered
+enroll_id_nodate <- inhosp_df %>%
+  filter(redcap_event_name == "Enrollment /Trial Day 1" & is.na(enroll_date)) %>%
+  pull(id)
+
 all_enrolled <- inhosp_df %>%
-  filter(redcap_event_name == "Enrollment /Trial Day 1") %>%
+  ## Restrict to patients with an enrollment date entered
+  filter(
+    redcap_event_name == "Enrollment /Trial Day 1" & !is.na(enroll_date)
+  ) %>%
   mutate(inhosp_status = factor(ifelse(!is.na(hospdis_date), 1,
                                 ifelse(!is.na(death_date), 2,
                                 ifelse(!is.na(studywd_date), 3, 4))),

@@ -6,6 +6,7 @@
 *.html
 *.md
 *.txt
-figures/
+figure/
+Graphics/
 *.js
 
