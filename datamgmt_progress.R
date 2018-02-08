@@ -347,6 +347,12 @@ pts_accel_rm <- inhosp_df %>%
 
 n_accel_permrm <- sum(pts_accel_rm$reason == "Permanent discontinuation")
 
+## Summarize reasons for device removal
+sum_accel_rm <- pts_accel_rm %>%
+  group_by(reason) %>%
+  count() %>%
+  arrange(desc(n))
+
 ## -- Number of times/day accelerometer was removed ----------------------------
 accel_rm_df <- inhosp_df %>%
   filter(!is.na(daily_date)) %>%
