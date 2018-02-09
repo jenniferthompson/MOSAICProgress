@@ -339,8 +339,8 @@ specimen_df <- timeline_df %>%
 ## On what percentage of patient-days has the accelerometer been removed?
 n_hosp_days <- sum(!is.na(inhosp_df$daily_date))
 
-## Get number of days with accelerometer info
-n_accel_days <- with(inhosp_df, sum(!is.na(bed_device_num) & !is.na(daily_date)))
+## Get number of days accelerometer was worn
+n_accel_days <- with(inhosp_df, sum(coord_ever == "Yes", na.rm = TRUE))
 
 ## Get number of days accelerometer was removed at least once
 n_accel_rm <- sum(inhosp_df$bed_device_num > 0, na.rm = TRUE)

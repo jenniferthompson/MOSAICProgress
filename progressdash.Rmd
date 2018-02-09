@@ -352,24 +352,18 @@ Column {data-width=500}
 ### Accelerometer Snapshot: Patient-Days
 
 ```{r accel_snapshot_days}
-## -- Patient-days accelerometer was removed for any reason --------------------
-pct_accel_rm <- round((n_accel_rm / n_accel_days) * 100)
-days_no_accel <- n_hosp_days - n_accel_days
+## -- Patient-days accelerometer was worn --------------------------------------
+pct_accel_worn <- round((n_accel_days / n_hosp_days) * 100)
 
-accel_text <- ifelse(
-  days_no_accel == 0,
-  "days accelerometer removed >=1 time<br> <br> ",
-  paste0(
-    "days accelerometer removed >=1 time<br><br><b>Note</b>: ",
-    days_no_accel, " days had no accelerometer data entered."
-  )
-)
+accel_text <- "days accelerometer worn<br> <br> "
 
 valueBox(
-  value = paste0(pct_accel_rm, "%"),
+  value = paste0(pct_accel_worn, "%"),
   caption = accel_text,
-  color = mosaic_col("orange2"),
-  icon = "fa-times"
+  color = ifelse(
+    pct_accel_worn < 80, mosaic_col("orange3"), mosaic_col("green3")
+  ),
+  icon = "fa-thumbs-up"
 )
 
 ```
