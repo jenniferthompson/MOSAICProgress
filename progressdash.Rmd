@@ -280,19 +280,19 @@ valueBox(
 
 ```
 
-### Specimen Log Compliance at Discharge (% of Patients)
+### Specimen Log Compliance (% of Patients Eligible)
 
 ```{r specimen_compliance}
-specimen_plot <- ggplot(data = specimen_rsns,
-                        aes(group = Color, x = Reason, y = Percent)) +
-  geom_bar(aes(alpha = (Reason == "Compliant"), fill = Color),
-           position = "dodge", stat = "identity") +
+specimen_plot <- ggplot(
+  data = specimen_df,
+  aes(group = Color, x = Day, y = Compliance)
+) +
+  geom_bar(aes(fill = Color), position = "dodge", stat = "identity") +
   scale_y_continuous(limits = c(0, 100),
                      breaks = seq(0, 100, 50),
                      labels = paste0(seq(0, 100, 50), "%")) +
   scale_fill_manual(values = c(mosaic_col("blue3"), "#5F0395"), guide = FALSE) +
   scale_alpha_manual(values = c(0.65, 0.85)) +
-  coord_flip() +
   theme_minimal() +
   theme(legend.position = "none",
         axis.title = element_blank(),
@@ -451,7 +451,7 @@ Study & Technical Info
 
 MOSAIC is funded by the National Institutes of Health. Please see our listing on [clinicaltrials.gov](https://clinicaltrials.gov/ct2/show/NCT03115840).
 
-This dashboard uses R version `r devtools::session_info()$platform$version`. Packages:
+This dashboard uses `r devtools::session_info()$platform$version`. Packages:
 
 ```{r}
 DT::datatable(devtools::session_info()$packages)
