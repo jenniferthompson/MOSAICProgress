@@ -113,12 +113,25 @@ screening_myears <- unique(screening_summary$myear)
 screening_myears_num <- 1:length(screening_myears)
 names(screening_myears_num) <- screening_myears
 
+## X axis labels: character versions of unique months of enrollment
+## Applies to both screening and exclusion charts
+screening_xlabs <- exc_over_time %>%
+    dplyr::select(myear, myear_char) %>%
+  distinct() %>%
+  pull(myear_char)
+
+## Which months to use on X axes? (After a year of enrollment, axis labels
+## getting crowded)
+use_xlabs <- seq(1, length(screening_xlabs), 2)
+
 screening_summary <- screening_summary %>%
   mutate(myear_num = screening_myears_num[myear])
 
-x_screen <- list(tickvals = as.numeric(screening_myears_num),
-                 ticktext = unique(screening_summary$myear_char),
-                 title = "")
+x_screen <- list(
+  tickvals = as.numeric(screening_myears_num)[use_xlabs],
+  ticktext = screening_xlabs[use_xlabs],
+  title = ""
+)
 y <- list(title = "")
 
 screen_plotly <- plot_ly(
@@ -128,17 +141,23 @@ screen_plotly <- plot_ly(
   type = "bar",
   name = "Screened",
   color = I(mosaic_col("red5")),
-  alpha = 0.75
+  alpha = 0.75,
+  hoverinfo = "text",
+  text = ~ sprintf("%s, Screened: %s", myear_char, Screened)
 ) %>%
   add_bars(
     y = ~ Approached,
     name = "Approached",
-    color = I(mosaic_col("orange3"))
+    color = I(mosaic_col("orange3")),
+    hoverinfo = "text",
+    text = ~ sprintf("%s, Approached: %s", myear_char, Approached)
   ) %>%
   add_bars(
     y = ~ Enrolled,
     name = "Enrolled",
-    color = I(mosaic_col("green4"))
+    color = I(mosaic_col("green4")),
+    hoverinfo = "text",
+    text = ~ sprintf("%s, Enrolled: %s", myear_char, Enrolled)
   )
 
 screen_plotly %>%
@@ -158,8 +177,8 @@ names(exc_myears_num) <- exc_myears
 exc_over_time <- exc_over_time %>%
   mutate(myear_num = exc_myears_num[myear])
 
-x_exc <- list(tickvals = as.numeric(exc_myears_num),
-              ticktext = unique(exc_over_time$myear_char),
+x_exc <- list(tickvals = as.numeric(exc_myears_num)[use_xlabs],
+              ticktext = screening_xlabs[use_xlabs],
               title = "")
 y_exc <- list(tickvals = seq(0, 100, 20),
               ticktext = paste0(seq(0, 100, 20), "%"),
@@ -173,7 +192,9 @@ exc_plotly <- plot_ly(
   mode = "lines+markers",
   color = ~ Reason,
   colors = exc_colors,
-  alpha = 0.6
+  alpha = 0.6,
+  hoverinfo = "text",
+  text = ~ sprintf("%s, %s: %s%%", myear_char, Reason, Percent)
 )
 
 exc_plotly %>%
