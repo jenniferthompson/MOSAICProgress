@@ -46,6 +46,7 @@ exc_df <- exc_df[grep("test", tolower(exc_df$exc_id), invert = TRUE),]
 
 ## Data management prep: Create POSIXct versions of most relevant date/times
 dtvars <- c("enroll_dttm", "death_dttm", "hospdis_dttm")
+datevars <- c("daily_date")
 
 inhosp_df <- inhosp_df %>%
   mutate_at(dtvars, "ymd_hm") %>%
@@ -53,6 +54,7 @@ inhosp_df <- inhosp_df %>%
   rename_at(dtvars, ~ gsub("tm$", "", .)) %>%
   rename_at(paste0(dtvars, "_date"), ~ gsub("_dttm", "", ., fixed = TRUE)) %>%
   mutate(studywd_date = ymd(studywd_dttm)) %>%
+  mutate_at(datevars, ymd) %>%
   select(-studywd_dttm)
 
 ################################################################################
@@ -345,18 +347,32 @@ n_accel_days <- with(inhosp_df, sum(coord_ever == "Yes", na.rm = TRUE))
 ## Get number of days accelerometer was removed at least once
 n_accel_rm <- sum(inhosp_df$bed_device_num > 0, na.rm = TRUE)
 
-## Patients with device permanently removed
+## Patients with device permanently removed *prior to 48h before discharge*
 pts_accel_rm <- inhosp_df %>%
-  dplyr::select(id, starts_with("bed_remove_why")) %>%
+  dplyr::select(id, daily_date, starts_with("bed_remove_why")) %>%
+  right_join(subset(all_enrolled, select = c(id, hospdis_date))) %>%
   gather(key = time, value = reason, bed_remove_why_1:bed_remove_why_8) %>%
   filter(!is.na(reason)) %>%
+  ## Indicator for whether device was permanently removed on day of or just
+  ## prior to discharge (should not count for study monitoring purposes)
+  mutate(
+    days_before_discharge =
+      as.numeric(difftime(hospdis_date, daily_date, units = "days")),
+    prep_discharge =
+      reason == "Permanent discontinuation" & days_before_discharge %in% 0:1,
+    reason_mod = case_when(
+      reason == "Permanent discontinuation" & prep_discharge ~
+        "Removed within a day of hospital discharge",
+      TRUE ~ reason
+    )
+  ) %>%
   unique()
 
-n_accel_permrm <- sum(pts_accel_rm$reason == "Permanent discontinuation")
+n_accel_permrm <- sum(pts_accel_rm$reason_mod == "Permanent discontinuation")
 
 ## Summarize reasons for device removal
 sum_accel_rm <- pts_accel_rm %>%
-  group_by(reason) %>%
+  group_by(reason_mod) %>%
   count() %>%
   arrange(desc(n))
 
