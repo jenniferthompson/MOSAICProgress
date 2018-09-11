@@ -261,13 +261,11 @@ hc_tm_exc
 
 ```
 
-In-Hospital
+Study Conduct
 =====================================
 
 Column {data-width=500}
 -----------------------------------------------------------------------
-
-### Pre-Hospital Questionnaires {data-height=40}
 
 ### Prehospital Surrogate Battery Completion Rate
 
@@ -285,18 +283,6 @@ valueBox(
   caption = "fully completed surrogate questionnaires<br>(General, PASE, ADLs, LS, employment, AUDIT, IQCODE)",
   color = ifelse(pct_surrogate_comp < 80, mosaic_col("orange3"), mosaic_col("green3")),
   icon = "ion-person-stalker"
-)
-
-```
-
-### Prehospital Caregiver Battery Completion Rate
-
-```{r ph_caregiver}
-valueBox(
-  value = paste0(pct_caregiver_comp, "%"),
-  caption = "fully completed caregiver questionnaires<br>(Zarit, Memory & Behavior)",
-  color = ifelse(pct_caregiver_comp < 80, mosaic_col("orange3"), mosaic_col("green3")),
-  icon = "ion-heart"
 )
 
 ```
@@ -326,6 +312,21 @@ x <- y <- list(title = NULL)
 specimen_plot %>%
   ggplotly(tooltip = c("x", "y", "group")) %>%
   layout(xaxis = x, yaxis = y)
+
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Prehospital Caregiver Battery Completion Rate
+
+```{r ph_caregiver}
+valueBox(
+  value = paste0(pct_caregiver_comp, "%"),
+  caption = "fully completed caregiver questionnaires<br>(Zarit, Memory & Behavior)",
+  color = ifelse(pct_caregiver_comp < 80, mosaic_col("orange3"), mosaic_col("green3")),
+  icon = "ion-heart"
+)
 
 ```
 
@@ -366,9 +367,11 @@ hc_tm_status
 
 ```
 
+Accelerometer Metrics
+================================================================================
+
 Column {data-width=500}
------------------------------------------------------------------------
-### **Accelerometer Central** {data-height=40}
+--------------------------------------------------------------------------------
 
 ### Accelerometer Snapshot: Patient-Days
 
@@ -389,22 +392,6 @@ valueBox(
 
 ```
 
-### Accelerometer Snapshot: Patients
-
-```{r accel_snapshot_pts}
-
-## -- Patients for whom accelerometer was permanently removed ------------------------
-pct_accel_permrm <- round((n_accel_permrm / n_enrolled) * 100)
-
-valueBox(
-  value = paste0(pct_accel_permrm, "%"),
-  caption = "patients with accelerometer permanently removed<br> <br> ",
-  color = mosaic_col("red4"),
-  icon = "fa-times-circle"
-)
-
-```
-
 ### On Days Accelerometer Was Removed, How Many Times?
 
 ```{r times_accel_removed}
@@ -420,6 +407,27 @@ accel_rm_hist <- ggplot(data = accel_rm_atleast1, aes(x = Times)) +
 
 accel_rm_hist %>%
   ggplotly(tooltip = c("x", "y"))
+
+```
+
+Column {data-width=500}
+--------------------------------------------------------------------------------
+
+### Accelerometer Snapshot: Patients
+
+```{r accel_snapshot_pts}
+
+## -- Pts for whom accel was permanently removed >1 day before discharge -------
+pct_accel_permrm <- round((n_accel_permrm / n_enrolled) * 100)
+
+valueBox(
+  value = paste0(pct_accel_permrm, "%"),
+  caption = "patients with accelerometer permanently removed<br>>1 day before discharge",
+  color = ifelse(pct_accel_permrm > 20, mosaic_col("red4"),
+          ifelse(pct_accel_permrm > 15, mosaic_col("orange3"),
+                 mosaic_col("green3"))),
+  icon = "fa-times-circle"
+)
 
 ```
 
