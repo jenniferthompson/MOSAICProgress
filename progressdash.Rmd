@@ -86,7 +86,7 @@ screenplot_ht <- 325
 Screening & Enrollment
 =====================================
 
-Column {data-width=700}
+Column {data-width=60%}
 -----------------------------------------------------------------------
 
 ### Patients Screened, Approached, and Enrolled
@@ -204,15 +204,15 @@ exc_plotly %>%
 
 ```
 
-Column {data-width=300}
+Column {data-width=40%}
 -----------------------------------------------------------------------
 
-### Cumulative Enrollment as of `r format(Sys.Date(), "%B %d, %Y")` {data-height=250}
+### Cumulative Enrollment as of `r format(Sys.Date(), "%B %d, %Y")` {data-height=40%}
 
 ```{r enrollment}
 screening_statement <- sprintf(
   "We have screened %s patients; %s%% were excluded and %s%% approached. Of those approached, %s%% refused consent and %s%% were enrolled.",
-  n_screened,
+  format(n_screened, big.mark = ","),
   round(pct_excluded*100),
   round(pct_approached*100),
   round(pct_refused*100),
@@ -230,12 +230,10 @@ enroll_gauge <- gauge(
 enroll_gauge
 
 ```
-
-### Approach & Refusal {data-height=250}
-
+<br>
 `r screening_statement`
 
-### Cumulative Exclusions (Total: `r nrow(exc_df)`) {data-height=500}
+### Cumulative Exclusions (Total: `r format(nrow(exc_df), big.mark = ",")`) {data-height=60%}
 
 ```{r exclusions_cumulative}
 tm_exc <- treemap(dtf = exc_cumul,
@@ -261,13 +259,13 @@ hc_tm_exc
 
 ```
 
-Study Conduct
-=====================================
+Study Conduct{data-orientation=rows}
+================================================================================
 
-Column {data-width=500}
------------------------------------------------------------------------
+Row{data-height=50%}
+--------------------------------------------------------------------------------
 
-### Prehospital Surrogate Battery Completion Rate
+### Prehospital Surrogate Battery Completion Rate{data-width=35%}
 
 ```{r ph_comp}
 pct_surrogate_comp <-
@@ -315,10 +313,10 @@ specimen_plot %>%
 
 ```
 
-Column {data-width=500}
------------------------------------------------------------------------
+Row{data-height=50%}
+--------------------------------------------------------------------------------
 
-### Prehospital Caregiver Battery Completion Rate
+### Prehospital Caregiver Battery Completion Rate{data-width=35%}
 
 ```{r ph_caregiver}
 valueBox(
@@ -367,13 +365,13 @@ hc_tm_status
 
 ```
 
-Accelerometer Metrics
+Accelerometer Metrics{data-orientation=rows}
 ================================================================================
 
-Column {data-width=500}
+Row {data-height=50%}
 --------------------------------------------------------------------------------
 
-### Accelerometer Snapshot: Patient-Days
+### Accelerometer Snapshot: Patient-Days{data-width=30%}
 
 ```{r accel_snapshot_days}
 ## -- Patient-days accelerometer was worn --------------------------------------
@@ -410,10 +408,10 @@ accel_rm_hist %>%
 
 ```
 
-Column {data-width=500}
+Row {data-height=50%}
 --------------------------------------------------------------------------------
 
-### Accelerometer Snapshot: Patients
+### Accelerometer Snapshot: Patients{data-width=35%}
 
 ```{r accel_snapshot_pts}
 
@@ -445,7 +443,7 @@ sum_accel_rm %>%
 Follow-Up
 =====================================
 
-Column {data-width=650}
+Column {data-width=33%}
 -----------------------------------------------------------------------
 
 ### Chart A
@@ -454,7 +452,7 @@ Column {data-width=650}
 
 ```
 
-Column {data-width=350}
+Column {data-width=66%}
 -----------------------------------------------------------------------
 
 ### Chart B
