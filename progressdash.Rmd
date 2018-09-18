@@ -330,7 +330,7 @@ p_surr <- ggplot(data = surrogate_pctcomp) +
   aes(x = key, y = value, text = htext) +
   scale_y_continuous(breaks = seq(0, 1, 0.2), label = scales::percent) +
   geom_pointrange(
-    aes(ymin = 0, ymax = value, color = comp_ok), size = 1
+    aes(ymin = 0, ymax = value, color = comp_ok), size = 3
   ) +
   scale_colour_manual(
     values = c(mosaic_col("green4"), mosaic_col("orange3"), mosaic_col("red5"))
@@ -338,12 +338,29 @@ p_surr <- ggplot(data = surrogate_pctcomp) +
   theme_minimal() +
   theme(
     axis.title.x = element_blank(),
-    axis.text.x = element_blank(),
     legend.position = "none"
   ) +
   labs(y = "% Fully or Partially Completed")
 
 ggplotly(p_surr, tooltip = "text")
+
+```
+
+Row{data-height=50%}
+--------------------------------------------------------------------------------
+
+### Prehospital Caregiver Battery Completion Rate{data-width=35%}
+
+```{r ph_caregiver}
+valueBox(
+  value = paste0(pct_caregiver_comp, "%"),
+  caption =
+    "fully completed caregiver questionnaires<br>(Zarit, Memory & Behavior)",
+  color = ifelse(
+    pct_caregiver_comp < 80, mosaic_col("orange3"), mosaic_col("green3")
+  ),
+  icon = "ion-heart"
+)
 
 ```
 
@@ -378,24 +395,6 @@ x <- y <- list(title = NULL)
 specimen_plot %>%
   ggplotly(tooltip = "text") %>%
   layout(xaxis = x, yaxis = y)
-
-```
-
-Row{data-height=50%}
---------------------------------------------------------------------------------
-
-### Prehospital Caregiver Battery Completion Rate{data-width=35%}
-
-```{r ph_caregiver}
-valueBox(
-  value = paste0(pct_caregiver_comp, "%"),
-  caption =
-    "fully completed caregiver questionnaires<br>(Zarit, Memory & Behavior)",
-  color = ifelse(
-    pct_caregiver_comp < 80, mosaic_col("orange3"), mosaic_col("green3")
-  ),
-  icon = "ion-heart"
-)
 
 ```
 
