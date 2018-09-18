@@ -2,7 +2,7 @@
 ## Data management to create MOSAIC study progress dashboard
 ################################################################################
 
-library(RCurl)
+library(httr)
 library(tidyverse)
 library(lubridate)
 
@@ -12,19 +12,21 @@ library(lubridate)
 ## We'll be doing the same thing for each, so write some functions
 ## 1. Function to create postForm() object given a database token
 get_pF <- function(rctoken){
-  postForm(
-    "https://redcap.vanderbilt.edu/api/", ## URL for REDCap instance
-    token = Sys.getenv(rctoken),                ## token for specific database
-    content = "record",                         ## export records
-    format = "csv",                             ## export as CSV
-    rawOrLabel = "label",                       ## exp. factor labels vs numbers
-    exportCheckboxLabel = TRUE,                 ## exp. checkbox labels vs U/C
-    exportDataAccessGroups = FALSE              ## don't need data access grps
+  httr::POST(
+    url = "https://redcap.vanderbilt.edu/api/",
+    body = list(
+      token = Sys.getenv(rctoken),   ## API token gives you permission
+      content = "record",            ## export *records*
+      format = "csv",                ## export as *CSV*
+      rawOrLabel = "label",          ## export factor *labels* v codes
+      exportCheckboxLabel = TRUE,    ## exp. checkbox labels vs U/C
+      exportDataAccessGroups = FALSE ## don't need data access grps
+    )
   )
 }
 
 get_csv <- function(pF){
-  read.csv(file = textConnection(pF), na.strings = "", stringsAsFactors = FALSE)
+  read.csv(text = as.character(pF), na.strings = "", stringsAsFactors = FALSE)
 }
 
 import_df <- function(rctoken){
