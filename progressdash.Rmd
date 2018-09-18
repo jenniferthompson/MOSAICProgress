@@ -32,6 +32,8 @@ library(plotly)
 library(highcharter)
 library(treemap)
 library(knitr)
+library(scales)
+library(glue)
 
 source("datamgmt_progress.R")
 
@@ -341,14 +343,20 @@ ggplotly(p_surr, tooltip = "text")
 ### Specimen Log Compliance (% of Patients Eligible)
 
 ```{r specimen_compliance}
+## Add text for tooltips
+specimen_df$htext <- glue::glue_data(
+  specimen_df,
+  "{Day}, {Color}: {scales::percent(Compliance)}"
+)
+
 specimen_plot <- ggplot(
   data = specimen_df,
-  aes(group = Color, x = Day, y = Compliance)
+  aes(group = Color, x = Day, y = Compliance, text = htext)
 ) +
   geom_bar(aes(fill = Color), position = "dodge", stat = "identity") +
-  scale_y_continuous(limits = c(0, 100),
-                     breaks = seq(0, 100, 50),
-                     labels = paste0(seq(0, 100, 50), "%")) +
+  scale_y_continuous(limits = c(0, 1),
+                     breaks = seq(0, 1, 0.5),
+                     label = scales::percent) +
   scale_fill_manual(values = c(mosaic_col("blue3"), "#5F0395"), guide = FALSE) +
   scale_alpha_manual(values = c(0.65, 0.85)) +
   theme_minimal() +
@@ -361,7 +369,7 @@ specimen_plot <- ggplot(
 x <- y <- list(title = NULL)
 
 specimen_plot %>%
-  ggplotly(tooltip = c("x", "y", "group")) %>%
+  ggplotly(tooltip = "text") %>%
   layout(xaxis = x, yaxis = y)
 
 ```

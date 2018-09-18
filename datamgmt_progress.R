@@ -340,7 +340,7 @@ specimen_df <- timeline_df %>%
   ## Summarize % compliance by study day, tube color
   group_by(Day, Color) %>%
   summarise(
-    Compliance = mean(compliant, na.rm = TRUE) * 100
+    Compliance = mean(compliant, na.rm = TRUE)
   ) %>%
   ungroup() 
 
