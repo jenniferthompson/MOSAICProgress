@@ -268,10 +268,39 @@ Row{data-height=50%}
 ### Prehospital Surrogate Battery Completion Rate{data-width=35%}
 
 ```{r ph_comp}
+## -- Proportion of full batteries completed -----------------------------------
 pct_surrogate_comp <-
   round(mean(all_enrolled$ph_surrogate_comp, na.rm = TRUE) * 100)
 pct_caregiver_comp <-
   round(mean(all_enrolled$ph_caregiver_comp, na.rm = TRUE) * 100)
+
+## -- Proportion of individual surrogate assessments completed -----------------
+surrogate_compvars <- paste0(
+  c("gq", "pase", "adl", "ls", "emp", "audit", "iqcode", "bdi", "zarit",
+    "memory"),
+  "_comp_ph"
+)
+
+surrogate_pctcomp <- all_enrolled %>%
+  dplyr::select(one_of(surrogate_compvars)) %>%
+  summarise_all(mean, na.rm = TRUE) %>%
+  gather() %>%
+  mutate(sort_order = if_else(key == "ph_surrogate_comp", 1, 2)) %>%
+  arrange(sort_order, desc(value)) %>%
+  mutate(
+    ## Sort in descending order of % completed
+    x_sorted = 1:n(),
+    ## Clearer battery names
+    key = case_when(
+      key == "memory_comp_ph" ~ "Mem/Behav",
+      key == "gq_comp_ph"     ~ "General",
+      key == "emp_comp_ph"    ~ "Employment",
+      key == "zarit_comp_ph"  ~ "Zarit",
+      TRUE                    ~ toupper(str_remove(key, "\\_comp\\_ph$"))
+    ),
+    key = fct_reorder(key, x_sorted),
+    htext = paste0(key, ": ", scales::percent(value))
+  )
 
 ```
 
@@ -282,6 +311,30 @@ valueBox(
   color = ifelse(pct_surrogate_comp < 80, mosaic_col("orange3"), mosaic_col("green3")),
   icon = "ion-person-stalker"
 )
+
+```
+
+### Surrogate/Caregiver Battery Completion
+
+```{r surrogate_pctcomp_ind}
+p_surr <- ggplot(data = surrogate_pctcomp) +
+  aes(x = key, y = value, text = htext) +
+  scale_y_continuous(breaks = seq(0, 1, 0.2), label = scales::percent) +
+  geom_hline(
+    aes(yintercept = 0.8),
+    alpha = 0.5, color = mosaic_col("orange2"), size = 2
+  ) +
+  geom_pointrange(
+    aes(ymin = 0, ymax = value), color = mosaic_col("red1"), size = 1
+  ) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank()
+  ) +
+  labs(y = "% Fully or Partially Completed")
+
+ggplotly(p_surr, tooltip = "text")
 
 ```
 
