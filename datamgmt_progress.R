@@ -41,6 +41,7 @@ import_df <- function(rctoken){
 
 inhosp_df <- import_df("MOSAIC_IH_TOKEN")
 exc_df <- import_df("MOSAIC_EXC_TOKEN")
+fu_df <- import_df("MOSAIC_FU_TOKEN")
 
 ## Remove test patients from each database
 inhosp_df <- inhosp_df[grep("test", tolower(inhosp_df$id), invert = TRUE),]
@@ -396,3 +397,93 @@ accel_rm_df <- inhosp_df %>%
          myear = paste(year, month, sep = "-"),
          myear_char = ifelse(mabb == "Mar", paste(mabb, year), mabb))
 
+################################################################################
+## Follow-Up Phase
+################################################################################
+
+## Note: No date field for PASE
+
+## -- Create dummy df: One record per enrolled patient per f/u time point ------
+fu_dummy <- cross_df(
+  list(
+    id = unique(all_enrolled$id),
+    redcap_event_name = unique(fu_df$redcap_event_name)
+  )
+)
+
+## List of assessments done at each time point
+asmts_phone <- c("ls", "ph_biadl")
+asmts_full <- c(
+  "gq", "biadl", "sppb", "hand", "rbans", "trails", "social", "eq5d", "pase",
+  "emp", "hus", "bpi", "audit", "zarit", "membehav", "ls"
+)
+asmts_all <- unique(c(asmts_phone, asmts_full))
+asmts_withdate <- setdiff(asmts_all, "pase") ## No date variable for PASE
+
+fu_df2 <- fu_dummy %>%
+  ## Merge on in-hospital info
+  left_join(
+    all_enrolled %>%
+      select(id, hospdis_date, studywd_date, death_date, inhosp_status),
+    by = "id"
+  ) %>%
+  left_join(
+    fu_df %>%
+      ## Select only variables needed for status, completion at time point
+      dplyr::select(
+        id, redcap_event_name, ends_with("complete_yn"), rbans_completed,
+        trails_completed, pase_comp_ph, emp_complete, hus_complete, bpi_complete,
+        ends_with("datecomp"), ends_with("date"), ends_with("date_complete"),
+        ends_with("date_compl")
+      ),
+    by = c("id", "redcap_event_name")
+  ) %>%
+  ## Rename all completion, date variables for consistency
+  rename_at(
+    vars(matches("\\_complete.*$"), pase_comp_ph),
+    ~ str_replace(., "\\_comp.+$", "_complete")
+  ) %>%
+  rename_at(
+    vars(matches("\\_date.+")), ~ str_replace(., "\\_date.+", "_date")
+  ) %>%
+  ## -- Determine status at each time point ------------------------------------
+  ## Convert dates to Date
+  mutate_at(
+    paste0(asmts_withdate, "_date"), ymd
+  ) %>%
+  ## Was each assessment completed at this time point?
+  mutate_at(
+    paste0(unique(c(asmts_phone, asmts_full)), "_complete"),
+    ~ str_detect(., "^Yes")
+  ) %>%
+  mutate(
+    ## Is this a phone assessment or a full assessment?
+    phone_only = str_detect(redcap_event_name, "Phone Call"),
+    n_asmts_phone = ifelse(
+      phone_only,
+      rowSums(.[, paste0(asmts_phone, "_complete")], na.rm = TRUE),
+      NA
+    ),
+    n_asmts_full = ifelse(
+      phone_only,
+      NA,
+      rowSums(.[, paste0(asmts_full, "_complete")], na.rm = TRUE)
+    ),
+    any_phone = n_asmts_phone > 0,
+    any_full = n_asmts_full > 0,
+    all_phone = n_asmts_phone == length(asmts_phone),
+    all_full = n_asmts_full == length(asmts_full)
+  )
+
+## -- Get first, last asssessment at each time point ---------------------------
+## Weird things happening with NAs? It doesn't think they're NA?
+first_asmts <- fu_df2 %>%
+  dplyr::select(id, redcap_event_name, paste0(asmts_withdate, "_date")) %>%
+  gather(key = "asmt_type", value = "asmt_date", ends_with("_date")) %>%
+  ## What is the earliest, latest followup date at this assessment?
+  group_by(id, redcap_event_name) %>%
+  summarise(
+    first_asmt = min(asmt_date, na.rm = TRUE),
+    last_asmt = max(asmt_date, na.rm = TRUE)
+  ) %>%
+  ungroup()
