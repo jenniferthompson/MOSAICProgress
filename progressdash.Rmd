@@ -310,7 +310,9 @@ surrogate_pctcomp <- all_enrolled %>%
 valueBox(
   value = paste0(pct_surrogate_comp, "%"),
   caption = "fully completed surrogate questionnaires<br>(General, PASE, ADLs, LS, employment, AUDIT, IQCODE, BDI)",
-  color = ifelse(pct_surrogate_comp < 80, mosaic_col("orange3"), mosaic_col("green3")),
+  color = ifelse(
+    pct_surrogate_comp < 80, mosaic_col("orange3"), mosaic_col("green3")
+  ),
   icon = "ion-person-stalker"
 )
 
@@ -382,8 +384,11 @@ Row{data-height=50%}
 ```{r ph_caregiver}
 valueBox(
   value = paste0(pct_caregiver_comp, "%"),
-  caption = "fully completed caregiver questionnaires<br>(Zarit, Memory & Behavior)",
-  color = ifelse(pct_caregiver_comp < 80, mosaic_col("orange3"), mosaic_col("green3")),
+  caption =
+    "fully completed caregiver questionnaires<br>(Zarit, Memory & Behavior)",
+  color = ifelse(
+    pct_caregiver_comp < 80, mosaic_col("orange3"), mosaic_col("green3")
+  ),
   icon = "ion-heart"
 )
 
