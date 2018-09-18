@@ -476,14 +476,15 @@ fu_df2 <- fu_dummy %>%
   )
 
 ## -- Get first, last asssessment at each time point ---------------------------
-## Weird things happening with NAs? It doesn't think they're NA?
 first_asmts <- fu_df2 %>%
   dplyr::select(id, redcap_event_name, paste0(asmts_withdate, "_date")) %>%
   gather(key = "asmt_type", value = "asmt_date", ends_with("_date")) %>%
   ## What is the earliest, latest followup date at this assessment?
+  ## Without this, weird things happening with NAs? It doesn't think they're NA?
+  filter(!is.na(asmt_date)) %>%
   group_by(id, redcap_event_name) %>%
   summarise(
-    first_asmt = min(asmt_date, na.rm = TRUE),
-    last_asmt = max(asmt_date, na.rm = TRUE)
+    first_asmt = min(asmt_date),
+    last_asmt = max(asmt_date)
   ) %>%
   ungroup()
