@@ -218,11 +218,11 @@ status_count <- all_enrolled %>%
 
 ## -- Completion of pre-hospital surrogate, caregiver batteries ----------------
 ## Surrogate battery: General questions, PASE, basic/IADLs, life space,
-##   employment questionnaire, AUDIT, IQCODE
+##   employment questionnaire, AUDIT, IQCODE; BDI, if enrolled >= 6/19/2018
 ## Caregiver battery: Zarit, memory/behavior checklist
 ## "Complete" = every section fully or partially completed
 surrogate_compvars <- paste0(
-  c("gq", "pase", "adl", "ls", "emp", "audit", "iqcode"),
+  c("gq", "pase", "adl", "ls", "emp", "audit", "iqcode", "bdi"),
   "_comp_ph"
 )
 caregiver_compvars <- paste0(c("zarit", "memory"), "_comp_ph")
@@ -230,11 +230,20 @@ caregiver_compvars <- paste0(c("zarit", "memory"), "_comp_ph")
 all_enrolled <- all_enrolled %>%
   mutate_at(
     vars(one_of(c(surrogate_compvars, caregiver_compvars))),
-    funs(!is.na(.) & . %in% c("Yes, completely", "Yes, partially"))
+    funs(!is.na(.) & str_detect(., "^Yes"))
+  ) %>%
+  ## BDI was not included in the battery until June 19, 2018; set these to
+  ##  missing, rather than FALSE
+  mutate(
+    bdi_comp_ph = if_else(enroll_date < as.Date("2018-06-19"), NA, bdi_comp_ph)
   ) %>%
   mutate(
-    ph_surrogate_comp =
-      rowSums(.[, surrogate_compvars]) == length(surrogate_compvars),
+    ph_surrogate_comp = case_when(
+      enroll_date < as.Date("2018-06-19") ~
+        rowSums(.[, setdiff(surrogate_compvars, "bdi_comp_ph")]) ==
+          length(surrogate_compvars) - 1,
+      TRUE ~ rowSums(.[, surrogate_compvars]) == length(surrogate_compvars)
+    ),
     ph_caregiver_comp =
       rowSums(.[, caregiver_compvars]) == length(caregiver_compvars)
   )
