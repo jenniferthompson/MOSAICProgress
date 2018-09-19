@@ -39,9 +39,12 @@ import_df <- function(rctoken){
   tmp_csv
 }
 
-inhosp_df <- import_df("MOSAIC_IH_TOKEN")
-exc_df <- import_df("MOSAIC_EXC_TOKEN")
-fu_df <- import_df("MOSAIC_FU_TOKEN")
+# ## Comment out while building dashboard to save time
+# inhosp_df <- import_df("MOSAIC_IH_TOKEN")
+# exc_df <- import_df("MOSAIC_EXC_TOKEN")
+# fu_df <- import_df("MOSAIC_FU_TOKEN")
+# save(inhosp_df, exc_df, fu_df, file = "testdata/testdata.Rdata")
+load("testdata/testdata.Rdata")
 
 ## Remove test patients from each database
 inhosp_df <- inhosp_df[grep("test", tolower(inhosp_df$id), invert = TRUE),]
