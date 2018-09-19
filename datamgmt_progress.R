@@ -423,8 +423,21 @@ asmts_full <- c(
 asmts_all <- unique(c(asmts_phone, asmts_full))
 asmts_withdate <- setdiff(asmts_all, "pase") ## No date variable for PASE
 
+## -- Function to turn missing assessment indicators to FALSE ------------------
+## This happens if (eg) the patient has not yet been reached for an assessment
+##  at a given time point; the "test_complete" variable has not yet been filled
+##  out, but for monitoring purposes, patient should be counted as not assessed
+turn_na_false <- function(x, phone_asmt, df){
+  if(phone_asmt){
+    ifelse(is.na(x) & df$phone_only & df$fu_elig, FALSE, x)
+  } else{
+    ifelse(is.na(x) & !df$phone_only & df$fu_elig, FALSE, x)
+  }
+}
+
+## -- Combine in-hospital dates with follow-up data ----------------------------
 fu_df2 <- fu_dummy %>%
-  ## Merge on in-hospital info
+  ## Merge in-hospital info onto dummy records
   left_join(
     all_enrolled %>%
       select(id, hospdis_date, studywd_date, death_date, inhosp_status),
@@ -449,11 +462,8 @@ fu_df2 <- fu_dummy %>%
   rename_at(
     vars(matches("\\_date.+")), ~ str_replace(., "\\_date.+", "_date")
   ) %>%
-  ## -- Determine status at each time point ------------------------------------
   ## Convert dates to Date
-  mutate_at(
-    paste0(asmts_withdate, "_date"), ymd
-  ) %>%
+  mutate_at(paste0(asmts_withdate, "_date"), ymd) %>%
   ## Was each assessment completed at this time point?
   mutate_at(
     paste0(unique(c(asmts_phone, asmts_full)), "_complete"),
@@ -462,6 +472,9 @@ fu_df2 <- fu_dummy %>%
   mutate(
     ## Is this a phone assessment or a full assessment?
     phone_only = str_detect(redcap_event_name, "Phone Call"),
+    ## How many assessments were done at each?
+    ##  If time point involved a phone assessment, info for full assessment is
+    ##  missing, and vice versa
     n_asmts_phone = ifelse(
       phone_only,
       rowSums(.[, paste0(asmts_phone, "_complete")], na.rm = TRUE),
@@ -478,16 +491,108 @@ fu_df2 <- fu_dummy %>%
     all_full = n_asmts_full == length(asmts_full)
   )
 
-## -- Get first, last asssessment at each time point ---------------------------
-first_asmts <- fu_df2 %>%
+## -- Figure out patient's status at each time point ---------------------------
+## Get first, last asssessment at each time point (these will often, but not
+##  always, be the same; sometimes the assessment was broken up into 2+ calls or
+##  visits due to time/fatigue)
+asmt_minmax <- fu_df2 %>%
   dplyr::select(id, redcap_event_name, paste0(asmts_withdate, "_date")) %>%
   gather(key = "asmt_type", value = "asmt_date", ends_with("_date")) %>%
   ## What is the earliest, latest followup date at this assessment?
-  ## Without this, weird things happening with NAs? It doesn't think they're NA?
-  filter(!is.na(asmt_date)) %>%
   group_by(id, redcap_event_name) %>%
   summarise(
-    first_asmt = min(asmt_date),
-    last_asmt = max(asmt_date)
+    ## Necessary to redo ymd(); otherwise it thinks none of them are NA?
+    first_asmt = ymd(min(asmt_date, na.rm = TRUE)),
+    last_asmt = ymd(max(asmt_date, na.rm = TRUE))
   ) %>%
   ungroup()
+
+fu_df3 <- fu_df2 %>%
+  left_join(asmt_minmax, by = c("id", "redcap_event_name")) %>%
+  ## Don't need dates anymore
+  dplyr::select(-one_of(paste0(asmts_withdate, "_date"))) %>%
+  ## Determine status at each time point
+  mutate(
+    fu_month = as.numeric(str_extract(redcap_event_name, "^\\d+(?= )")),
+    daysto_window = case_when(
+      fu_month == 1  ~ 30,
+      fu_month == 2  ~ 60,
+      fu_month == 3  ~ 83,
+      fu_month == 6  ~ 180,
+      fu_month == 12 ~ 335,
+      TRUE           ~ as.numeric(NA)
+    ),
+    enter_window = as.Date(hospdis_date + daysto_window),
+    exit_window = as.Date(
+      case_when(
+        fu_month %in% c(1, 2) ~ enter_window + 14,
+        fu_month == 3         ~ enter_window + 56,
+        fu_month == 6         ~ enter_window + 30,
+        fu_month == 12        ~ enter_window + 90,
+        TRUE                  ~ as.Date(NA)
+      )
+    ),
+    in_window = ifelse(is.na(hospdis_date), NA, enter_window <= Sys.Date()),
+    
+    ## Followup status:
+    ## - Had >1 assessment: Assessed
+    ## - Died prior to end of followup window: Died
+    ## - Withdrew prior to end of followup window: Withdrew
+    ## - Not yet in the follow-up window: Currently ineligible
+    ## - None of the above: Currently lost to follow-up
+    fu_status = factor(
+      case_when(
+        (phone_only & any_phone) | (!phone_only & any_full) ~ 1,
+        !is.na(death_date) &
+          (inhosp_status == "Died in hospital" |
+             death_date < exit_window)                      ~ 2,
+        !is.na(studywd_date) &
+          (inhosp_status == "Withdrew in hospital" |
+             studywd_date < exit_window)                    ~ 3,
+        Sys.Date() < enter_window                           ~ 4,
+        inhosp_status == "Still in hospital"                ~ as.numeric(NA),
+        TRUE                                                ~ 5
+      ),
+      levels = 1:5,
+      labels = c(
+        "Assessment fully or partially completed",
+        "Died before follow-up window ended",
+        "Withdrew before follow-up window ended",
+        "Not yet eligible for follow-up",
+        "Eligible, but not yet assessed"
+      )
+    ),
+    
+    ## Indicators for whether patient is eligible for followup (included in
+    ##  denominator) and has been assessed (included in numerator)
+    fu_elig = fu_status %in% c(
+      "Assessment fully or partially completed", "Eligible, but not yet assessed"
+    ),
+    fu_comp = ifelse(
+      !fu_elig, NA, fu_status == "Assessment fully or partially completed"
+    )
+  )
+
+## -- Set asmt indicators to FALSE if pt eligible but no data yet entered ------
+fu_df4 <- fu_df3 %>%
+  mutate_at(
+    vars(paste0(asmts_phone, "_complete")),
+    turn_na_false, phone_asmt = TRUE, df = fu_df3
+  ) %>%
+  mutate_at(
+    vars(paste0(asmts_full, "_complete")),
+    turn_na_false, phone_asmt = FALSE, df = fu_df3
+  )
+
+## TODO
+## - Incorporate the fact that some patients were consented on an old form that
+##   did not involve the phone assessments
+
+# ## -- Check patients without followup for JV -----------------------------------
+# fu_df3 %>%
+#   filter(fu_status == "Eligible, but not yet assessed") %>%
+#   dplyr::select(
+#     id, redcap_event_name, hospdis_date, enter_window, exit_window
+#   ) %>%
+#   arrange(redcap_event_name) %>%
+#   write_csv(path = "testdata/eligible_nofu.csv", na = "", col_names = TRUE)
