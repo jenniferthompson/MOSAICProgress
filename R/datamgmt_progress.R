@@ -507,7 +507,7 @@ asmt_minmax <- fu_df2 %>%
   ) %>%
   ungroup()
 
-fu_df3 <- fu_df2 %>%
+fu_long <- fu_df2 %>%
   left_join(asmt_minmax, by = c("id", "redcap_event_name")) %>%
   ## Don't need dates anymore
   dplyr::select(-one_of(paste0(asmts_withdate, "_date"))) %>%
@@ -539,6 +539,7 @@ fu_df3 <- fu_df2 %>%
     ## - Died prior to end of followup window: Died
     ## - Withdrew prior to end of followup window: Withdrew
     ## - Not yet in the follow-up window: Currently ineligible
+    ## - VMO-001-7: consent did not include phone assessments (1, 2, 6m)
     ## - None of the above: Currently lost to follow-up
     fu_status = factor(
       case_when(
@@ -551,14 +552,16 @@ fu_df3 <- fu_df2 %>%
              studywd_date < exit_window)                    ~ 3,
         Sys.Date() < enter_window                           ~ 4,
         inhosp_status == "Still in hospital"                ~ as.numeric(NA),
-        TRUE                                                ~ 5
+        phone_only & id %in% paste0("VMO-00", 1:7)          ~ 5,
+        TRUE                                                ~ 6
       ),
-      levels = 1:5,
+      levels = 1:6,
       labels = c(
         "Assessment fully or partially completed",
         "Died before follow-up window ended",
         "Withdrew before follow-up window ended",
         "Not yet eligible for follow-up",
+        "Consent did not include phone assessment",
         "Eligible, but not yet assessed"
       )
     ),
@@ -584,15 +587,41 @@ fu_df3 <- fu_df2 %>%
     funs(ifelse(is.na(.) & !phone_only & fu_elig, FALSE, .))
   )
 
-## TODO
-## - Incorporate the fact that some patients were consented on an old form that
-##   did not involve the phone assessments
-
 # ## -- Check patients without followup for JV -----------------------------------
-# fu_df3 %>%
+# fu_long %>%
 #   filter(fu_status == "Eligible, but not yet assessed") %>%
 #   dplyr::select(
 #     id, redcap_event_name, hospdis_date, enter_window, exit_window
 #   ) %>%
 #   arrange(redcap_event_name) %>%
 #   write_csv(path = "testdata/eligible_nofu.csv", na = "", col_names = TRUE)
+
+## -- Summary statistics for dashboard -----------------------------------------
+## Overall % complete at each time point
+fu_totals <- fu_long %>%
+  dplyr::select(redcap_event_name, fu_elig, fu_comp) %>%
+  filter(fu_elig) %>%
+  group_by(redcap_event_name) %>%
+  summarise(
+    n_elig = sum(fu_elig),
+    n_comp = sum(fu_comp),
+    prop_comp = mean(fu_comp)
+  )
+
+fu_asmts <- fu_long %>%
+  dplyr::select(redcap_event_name, fu_elig, ends_with("_complete")) %>%
+  filter(fu_elig) %>%
+  gather(key = asmt_type, value = asmt_done, ends_with("_complete")) %>%
+  ## Only include assessments that "match" the time point
+  filter(
+    (redcap_event_name %in% paste(c(3, 12), "Month Assessment") &
+      asmt_type %in% paste0(asmts_full, "_complete")) |
+    (redcap_event_name %in% paste(c(1, 2, 6), "Month Phone Call") &
+       asmt_type %in% paste0(asmts_phone, "_complete"))
+  ) %>%
+  group_by(redcap_event_name, asmt_type) %>%
+  summarise(
+    n_elig = sum(fu_elig),
+    n_comp = sum(asmt_done),
+    prop_comp = mean(asmt_done)
+  )
