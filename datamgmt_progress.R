@@ -571,17 +571,17 @@ fu_df3 <- fu_df2 %>%
     fu_comp = ifelse(
       !fu_elig, NA, fu_status == "Assessment fully or partially completed"
     )
-  )
-
-## -- Set asmt indicators to FALSE if pt eligible but no data yet entered ------
-fu_df4 <- fu_df3 %>%
+  ) %>%
+  ## Set asmt indicators to FALSE if pt eligible but no data yet entered
+  ## Phone only
   mutate_at(
     vars(paste0(asmts_phone, "_complete")),
-    turn_na_false, phone_asmt = TRUE, df = fu_df3
+    funs(ifelse(is.na(.) & phone_only & fu_elig, FALSE, .))
   ) %>%
+  ## Full batteries
   mutate_at(
     vars(paste0(asmts_full, "_complete")),
-    turn_na_false, phone_asmt = FALSE, df = fu_df3
+    funs(ifelse(is.na(.) & !phone_only & fu_elig, FALSE, .))
   )
 
 ## TODO
