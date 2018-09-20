@@ -35,7 +35,8 @@ library(knitr)
 library(scales)
 library(glue)
 
-source("datamgmt_progress.R")
+source("R/datamgmt_progress.R")
+source("R/plot_asmts_comp.R")
 
 mosaic_pal <- c(
   ## Row 1, starting with leftmost diamond
@@ -286,26 +287,26 @@ surrogate_compvars <- paste0(
 surrogate_pctcomp <- all_enrolled %>%
   dplyr::select(one_of(surrogate_compvars)) %>%
   summarise_all(mean, na.rm = TRUE) %>%
-  gather() %>%
-  mutate(sort_order = if_else(key == "ph_surrogate_comp", 1, 2)) %>%
-  arrange(sort_order, desc(value)) %>%
+  gather(key = asmt_type, value = prop_comp) %>%
+  mutate(sort_order = if_else(asmt_type == "ph_surrogate_comp", 1, 2)) %>%
+  arrange(sort_order, desc(prop_comp)) %>%
   mutate(
     ## Sort in descending order of % completed
     x_sorted = 1:n(),
     ## Clearer battery names
-    key = case_when(
-      key == "memory_comp_ph" ~ "Mem/Behav",
-      key == "gq_comp_ph"     ~ "General",
-      key == "emp_comp_ph"    ~ "Employment",
-      key == "zarit_comp_ph"  ~ "Zarit",
-      TRUE                    ~ toupper(str_remove(key, "\\_comp\\_ph$"))
+    asmt_type = case_when(
+      asmt_type == "memory_comp_ph" ~ "Mem/Behav",
+      asmt_type == "gq_comp_ph"     ~ "General",
+      asmt_type == "emp_comp_ph"    ~ "Employment",
+      asmt_type == "zarit_comp_ph"  ~ "Zarit",
+      TRUE ~ toupper(str_remove(asmt_type, "\\_comp\\_ph$"))
     ),
-    key = fct_reorder(key, x_sorted),
-    htext = paste0(key, ": ", scales::percent(value)),
+    asmt_type = fct_reorder(asmt_type, x_sorted),
+    htext = paste0(asmt_type, ": ", scales::percent(prop_comp)),
     comp_ok = case_when(
-      value > 0.90 ~ "Excellent",
-      value > 0.80 ~ "Okay",
-      TRUE         ~ "Uh-oh"
+      prop_comp > 0.90 ~ "Excellent",
+      prop_comp > 0.80 ~ "Okay",
+      TRUE             ~ "Uh-oh"
     )
   )
 
@@ -326,22 +327,7 @@ valueBox(
 ### Surrogate/Caregiver Battery Completion
 
 ```{r surrogate_pctcomp_ind}
-p_surr <- ggplot(data = surrogate_pctcomp) +
-  aes(x = key, y = value, text = htext) +
-  scale_y_continuous(breaks = seq(0, 1, 0.2), label = scales::percent) +
-  geom_pointrange(
-    aes(ymin = 0, ymax = value, color = comp_ok), size = 3
-  ) +
-  scale_colour_manual(
-    values = c(mosaic_col("green4"), mosaic_col("orange3"), mosaic_col("red5"))
-  ) +
-  theme_minimal() +
-  theme(
-    axis.title.x = element_blank(),
-    legend.position = "none"
-  ) +
-  labs(y = "% Fully or Partially Completed")
-
+p_surr <- plot_asmts_comp(df = surrogate_pctcomp, ybreaks = seq(0, 1, 0.2))
 ggplotly(p_surr, tooltip = "text")
 
 ```
@@ -510,32 +496,73 @@ sum_accel_rm %>%
 
 ```
 
-Follow-Up
-=====================================
+Follow-Up {data-orientation=rows}
+================================================================================
 
-Column {data-width=33%}
------------------------------------------------------------------------
+Row {data-height=33%}
+--------------------------------------------------------------------------------
 
-### Chart A
+```{r fu_prep}
+prop_totals <- map_dbl(
+  fu_totals %>% pull(prop_comp), ~ round(., 2)
+) %>%
+  set_names(fu_totals %>% pull(redcap_event_name))
 
-```{r}
+fu_asmts <- fu_asmts %>%
+  mutate(
+    asmt_type = case_when(
+      asmt_type %in% paste0(c("ph_", ""), "biadl_complete") ~ "BIADL",
+      asmt_type == "emp_complete"                           ~ "Employment",
+      asmt_type == "gq_complete"                            ~ "General",
+      asmt_type == "hand_complete"                          ~ "Handgrip",
+      asmt_type == "membehav_complete"                      ~ "Mem/Behav",
+      asmt_type == "social_complete"                        ~ "Social",
+      asmt_type == "trails_complete"                        ~ "Trails",
+      asmt_type == "zarit_complete"                         ~ "Zarit",
+      TRUE ~ toupper(str_remove(asmt_type, "\\_complete$"))
+    ),
+    htext = paste0(asmt_type, ": ", scales::percent(round(prop_comp, 2))),
+    comp_ok = case_when(
+      prop_comp > 0.90 ~ "Excellent",
+      prop_comp > 0.80 ~ "Okay",
+      TRUE             ~ "Uh-oh"
+    )
+  )
 
 ```
 
-Column {data-width=66%}
------------------------------------------------------------------------
+### 1-Month Follow-Up
 
-### Chart B
-
-```{r}
+```{r fu_total_1m}
+valueBox(
+  value = scales::percent(pluck(prop_totals, "1 Month Phone Call")),
+  caption = "fully or partially completed, <b>1 month</b>",
+  color = ifelse(
+    pluck(prop_totals, "1 Month Phone Call") < 0.9,
+    mosaic_col("orange3"),
+    mosaic_col("green3")
+  )
+)
 
 ```
 
-### Chart C
+### 1-Month Assessments
 
-```{r}
+```{r fu_asmts_1m}
+p_1m <- plot_asmts_comp(
+  df = fu_asmts %>% filter(redcap_event_name == "1 Month Phone Call"),
+  ybreaks = 0:1
+)
+ggplotly(p_1m, tooltip = "text")
 
 ```
+
+Row {data-height=33%}
+--------------------------------------------------------------------------------
+
+Row {data-height=33%}
+--------------------------------------------------------------------------------
+
 
 Study & Technical Info
 =====================================
