@@ -59,6 +59,13 @@ mosaic_pal <- c(
 ## Function to get hex for a specific element
 mosaic_col <- function(hex){ as.character(mosaic_pal[hex]) }
 
+## Colors for assessment plots
+asmt_values = c(
+  "Excellent" = mosaic_col("green4"),
+  "Okay" = mosaic_col("orange3"),
+  "Uh-oh" = mosaic_col("red5")
+)
+
 ## Named vector of colors for exclusions
 exc_colors <- c(
   ">5 hospital days in last 30" = mosaic_col("blue1"),
@@ -511,11 +518,11 @@ prop_totals <- map_dbl(
 fu_asmts <- fu_asmts %>%
   mutate(
     asmt_type = case_when(
-      asmt_type %in% paste0(c("ph_", ""), "biadl_complete") ~ "BIADL",
-      asmt_type == "emp_complete"                           ~ "Employment",
-      asmt_type == "gq_complete"                            ~ "General",
-      asmt_type == "hand_complete"                          ~ "Handgrip",
-      asmt_type == "membehav_complete"                      ~ "Mem/Behav",
+      asmt_type %in% paste0(c("ph_", ""), "biadl_complete") ~ "ADL",
+      asmt_type == "emp_complete"                           ~ "Emp.",
+      asmt_type == "gq_complete"                            ~ "Gen.",
+      asmt_type == "hand_complete"                          ~ "Hand.",
+      asmt_type == "membehav_complete"                      ~ "M/B",
       asmt_type == "social_complete"                        ~ "Social",
       asmt_type == "trails_complete"                        ~ "Trails",
       asmt_type == "zarit_complete"                         ~ "Zarit",
@@ -531,7 +538,7 @@ fu_asmts <- fu_asmts %>%
 
 ```
 
-### 1-Month Follow-Up
+### 1-Month Follow-Up{data-width=20%}
 
 ```{r fu_total_1m}
 valueBox(
@@ -546,23 +553,134 @@ valueBox(
 
 ```
 
-### 1-Month Assessments
+### Assessments {data-width=20%}
 
 ```{r fu_asmts_1m}
 p_1m <- plot_asmts_comp(
   df = fu_asmts %>% filter(redcap_event_name == "1 Month Phone Call"),
   ybreaks = 0:1
 )
-ggplotly(p_1m, tooltip = "text")
+ggplotly(p_1m + theme(axis.text.y = element_blank()), tooltip = "text")
+
+```
+
+### 3-Month Follow-Up{data-width=20%}
+
+```{r fu_total_3m}
+valueBox(
+  value = scales::percent(pluck(prop_totals, "3 Month Assessment")),
+  caption = "fully or partially completed, <b>3 months</b>",
+  color = ifelse(
+    pluck(prop_totals, "3 Month Assessment") < 0.9,
+    mosaic_col("orange3"),
+    mosaic_col("green3")
+  )
+)
+
+```
+
+### 3-Month Assessments (N Eligible: `r nrow(fu_long %>% filter(redcap_event_name == "3 Month Assessment" & fu_elig))`)
+
+```{r fu_asmts_3m}
+p_3m <- plot_asmts_comp(
+  df = fu_asmts %>% filter(redcap_event_name == "3 Month Assessment"),
+  ybreaks = 0:1
+)
+ggplotly(p_3m, tooltip = "text")
 
 ```
 
 Row {data-height=33%}
 --------------------------------------------------------------------------------
 
+### 2-Month Follow-Up{data-width=15%}
+
+```{r fu_total_2m}
+valueBox(
+  value = scales::percent(pluck(prop_totals, "2 Month Phone Call")),
+  caption = "fully or partially completed, <b>2 months</b>",
+  color = ifelse(
+    pluck(prop_totals, "2 Month Phone Call") < 0.9,
+    mosaic_col("orange3"),
+    mosaic_col("green3")
+  )
+)
+
+```
+
+### Assessments{data-width=20%}
+
+```{r fu_asmts_2m}
+p_2m <- plot_asmts_comp(
+  df = fu_asmts %>% filter(redcap_event_name == "2 Month Phone Call"),
+  ybreaks = 0:1
+)
+ggplotly(p_2m + theme(axis.text.y = element_blank()), tooltip = "text")
+
+```
+
+### 12-Month Follow-Up{data-width=20%}
+
+```{r fu_total_12m}
+valueBox(
+  value = scales::percent(pluck(prop_totals, "12 Month Assessment")),
+  caption = "fully or partially completed, <b>12 months</b>",
+  color = ifelse(
+    pluck(prop_totals, "12 Month Assessment") < 0.9,
+    mosaic_col("orange3"),
+    mosaic_col("green3")
+  )
+)
+
+```
+
+### 12-Month Assessments (N Eligible: `r nrow(fu_long %>% filter(redcap_event_name == "12 Month Assessment" & fu_elig))`)
+
+```{r fu_asmts_12m}
+p_12m <- plot_asmts_comp(
+  df = fu_asmts %>% filter(redcap_event_name == "12 Month Assessment"),
+  ybreaks = 0:1
+)
+ggplotly(p_12m, tooltip = "text")
+
+```
+
 Row {data-height=33%}
 --------------------------------------------------------------------------------
 
+### 6-Month Follow-Up{data-width=15%}
+
+```{r fu_total_6m}
+valueBox(
+  value = scales::percent(pluck(prop_totals, "6 Month Phone Call")),
+  caption = "fully or partially completed,<br><b>6 months</b>",
+  color = ifelse(
+    pluck(prop_totals, "6 Month Phone Call") < 0.9,
+    mosaic_col("orange3"),
+    mosaic_col("green3")
+  )
+)
+
+```
+
+### Assessments{data-width=20%}
+
+```{r fu_asmts_6m}
+p_6m <- plot_asmts_comp(
+  df = fu_asmts %>% filter(redcap_event_name == "6 Month Phone Call"),
+  ybreaks = 0:1
+)
+ggplotly(p_6m + theme(axis.text.y = element_blank()), tooltip = "text")
+
+```
+
+### This Will Eventually Have a Sankey Chart or Something
+
+### Patients Eligible but Not Yet Assessed
+
+**3 Months:** `r paste(fu_long %>% filter(fu_elig, !fu_comp, redcap_event_name == "3 Month Assessment") %>% pull(id), collapse = "; ")`
+
+**12 Months:** `r paste(fu_long %>% filter(fu_elig, !fu_comp, redcap_event_name == "12 Month Assessment") %>% pull(id), collapse = "; ")`
 
 Study & Technical Info
 =====================================
