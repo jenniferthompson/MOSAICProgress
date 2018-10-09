@@ -558,7 +558,8 @@ valueBox(
 ```{r fu_asmts_1m}
 p_1m <- plot_asmts_comp(
   df = fu_asmts %>% filter(redcap_event_name == "1 Month Phone Call"),
-  ybreaks = 0:1
+  ybreaks = 0:1,
+  order_desc = FALSE
 )
 ggplotly(p_1m + theme(axis.text.y = element_blank()), tooltip = "text")
 
@@ -579,7 +580,7 @@ valueBox(
 
 ```
 
-### 3-Month Assessments (N Eligible: `r nrow(fu_long %>% filter(redcap_event_name == "3 Month Assessment" & fu_elig))`)
+### **3-Month Assessments** (N Eligible: `r nrow(fu_long %>% filter(redcap_event_name == "3 Month Assessment" & fu_elig))`)
 
 ```{r fu_asmts_3m}
 p_3m <- plot_asmts_comp(
@@ -613,7 +614,8 @@ valueBox(
 ```{r fu_asmts_2m}
 p_2m <- plot_asmts_comp(
   df = fu_asmts %>% filter(redcap_event_name == "2 Month Phone Call"),
-  ybreaks = 0:1
+  ybreaks = 0:1,
+  order_desc = FALSE
 )
 ggplotly(p_2m + theme(axis.text.y = element_blank()), tooltip = "text")
 
@@ -634,7 +636,7 @@ valueBox(
 
 ```
 
-### 12-Month Assessments (N Eligible: `r nrow(fu_long %>% filter(redcap_event_name == "12 Month Assessment" & fu_elig))`)
+### **12-Month Assessments** (N Eligible: `r nrow(fu_long %>% filter(redcap_event_name == "12 Month Assessment" & fu_elig))`)
 
 ```{r fu_asmts_12m}
 p_12m <- plot_asmts_comp(
@@ -668,7 +670,8 @@ valueBox(
 ```{r fu_asmts_6m}
 p_6m <- plot_asmts_comp(
   df = fu_asmts %>% filter(redcap_event_name == "6 Month Phone Call"),
-  ybreaks = 0:1
+  ybreaks = 0:1,
+  order_desc = FALSE
 )
 ggplotly(p_6m + theme(axis.text.y = element_blank()), tooltip = "text")
 

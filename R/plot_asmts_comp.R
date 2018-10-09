@@ -6,7 +6,13 @@
 ## - prop_comp: proportion of this assessment counted as complete
 ## - htext: text for tooltip (eg, "RBANS: 98%")
 ## - comp_ok: factor categorizing % complete; used to color lollipops
-plot_asmts_comp <- function(df, ybreaks){
+plot_asmts_comp <- function(df, ybreaks, order_desc = TRUE){
+  ## Reorder assessment types if requested; otherwise, default is alphabetical
+  if(order_desc){
+    df <- df %>%
+      mutate(asmt_type = fct_reorder(asmt_type, prop_comp, .desc = TRUE))
+  }
+  
   p <- ggplot(
     data = df
   ) +
