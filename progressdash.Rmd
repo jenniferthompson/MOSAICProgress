@@ -581,7 +581,7 @@ valueBox(
 
 ```
 
-### **3-Month Assessments** (N Eligible: `r nrow(fu_long %>% filter(redcap_event_name == "3 Month Assessment" & fu_elig))`)
+### **3-Month Assessments** (Out of `r nrow(fu_long %>% filter(redcap_event_name == "3 Month Assessment" & fu_comp))` Completed Assessments)
 
 ```{r fu_asmts_3m}
 p_3m <- plot_asmts_comp(
@@ -637,7 +637,7 @@ valueBox(
 
 ```
 
-### **12-Month Assessments** (N Eligible: `r nrow(fu_long %>% filter(redcap_event_name == "12 Month Assessment" & fu_elig))`)
+### **12-Month Assessments** (Out of `r nrow(fu_long %>% filter(redcap_event_name == "12 Month Assessment" & fu_comp))` Completed Assessments)
 
 ```{r fu_asmts_12m}
 p_12m <- plot_asmts_comp(

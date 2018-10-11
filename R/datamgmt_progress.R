@@ -617,8 +617,8 @@ fu_totals <- fu_long %>%
   )
 
 fu_asmts <- fu_long %>%
-  dplyr::select(redcap_event_name, fu_elig, ends_with("_complete")) %>%
-  filter(fu_elig) %>%
+  dplyr::select(redcap_event_name, fu_comp, ends_with("_complete")) %>%
+  filter(fu_comp) %>%
   gather(key = asmt_type, value = asmt_done, ends_with("_complete")) %>%
   ## Only include assessments that "match" the time point
   filter(
@@ -629,7 +629,7 @@ fu_asmts <- fu_long %>%
   ) %>%
   group_by(redcap_event_name, asmt_type) %>%
   summarise(
-    n_elig = sum(fu_elig),
+    n_elig = sum(fu_comp),
     n_comp = sum(asmt_done),
     prop_comp = mean(asmt_done)
   )
