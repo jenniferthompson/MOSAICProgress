@@ -34,6 +34,7 @@ library(treemap)
 library(knitr)
 library(scales)
 library(glue)
+library(googleVis)
 
 source("R/datamgmt_progress.R")
 source("R/plot_asmts_comp.R")
@@ -428,7 +429,7 @@ hc_tm_status
 
 ```
 
-Accelerometer Metrics{data-orientation=rows}
+Accelerometers{data-orientation=rows}
 ================================================================================
 
 Row {data-height=50%}
@@ -543,7 +544,7 @@ fu_asmts <- fu_asmts %>%
 ```{r fu_total_1m}
 valueBox(
   value = scales::percent(pluck(prop_totals, "1 Month Phone Call")),
-  caption = "fully or partially completed, <b>1 month</b>",
+  caption = "fully or partially completed,<br><b>1 month</b>",
   color = ifelse(
     pluck(prop_totals, "1 Month Phone Call") < 0.9,
     mosaic_col("orange3"),
@@ -570,7 +571,7 @@ ggplotly(p_1m + theme(axis.text.y = element_blank()), tooltip = "text")
 ```{r fu_total_3m}
 valueBox(
   value = scales::percent(pluck(prop_totals, "3 Month Assessment")),
-  caption = "fully or partially completed, <b>3 months</b>",
+  caption = "fully or partially completed,<br><b>3 months</b>",
   color = ifelse(
     pluck(prop_totals, "3 Month Assessment") < 0.9,
     mosaic_col("orange3"),
@@ -599,7 +600,7 @@ Row {data-height=33%}
 ```{r fu_total_2m}
 valueBox(
   value = scales::percent(pluck(prop_totals, "2 Month Phone Call")),
-  caption = "fully or partially completed, <b>2 months</b>",
+  caption = "fully or partially completed,<br><b>2 months</b>",
   color = ifelse(
     pluck(prop_totals, "2 Month Phone Call") < 0.9,
     mosaic_col("orange3"),
@@ -626,7 +627,7 @@ ggplotly(p_2m + theme(axis.text.y = element_blank()), tooltip = "text")
 ```{r fu_total_12m}
 valueBox(
   value = scales::percent(pluck(prop_totals, "12 Month Assessment")),
-  caption = "fully or partially completed, <b>12 months</b>",
+  caption = "fully or partially completed,<br><b>12 months</b>",
   color = ifelse(
     pluck(prop_totals, "12 Month Assessment") < 0.9,
     mosaic_col("orange3"),
@@ -677,13 +678,206 @@ ggplotly(p_6m + theme(axis.text.y = element_blank()), tooltip = "text")
 
 ```
 
-### This Will Eventually Have a Sankey Chart or Something
+### Not Yet Assessed{data-width=30%}
 
-### Patients Eligible but Not Yet Assessed
+**3M:** `r paste(fu_long %>% filter(fu_elig, fu_status == "Eligible, but not yet assessed", redcap_event_name == "3 Month Assessment") %>% pull(id) %>% stringr::str_remove("VMO-"), collapse = "; ")`
 
-**3 Months:** `r paste(fu_long %>% filter(fu_elig, !fu_comp, redcap_event_name == "3 Month Assessment") %>% pull(id), collapse = "; ")`
+**12M:** `r paste(fu_long %>% filter(fu_elig, fu_status == "Eligible, but not yet assessed", redcap_event_name == "12 Month Assessment") %>% pull(id) %>% stringr::str_remove("VMO-"), collapse = "; ")`
 
-**12 Months:** `r paste(fu_long %>% filter(fu_elig, !fu_comp, redcap_event_name == "12 Month Assessment") %>% pull(id), collapse = "; ")`
+### Patient Flow
+
+```{r sankey}
+## Create data.frame of nodes
+## Possible states:
+##  0) Enrolled
+##  1) Discharged alive
+##  2) Assessed, 3m
+##  3) Not assessed, 3m
+##  4) Not yet eligible, 3m
+##  5) Assessed, 12m
+##  6) Not assessed, 12m
+##  7) Not yet eligible, 12m
+##  8) Hospitalized
+##  9) Withdrawn
+## 10) Died
+sankey_nodes <- data.frame(
+  id = 0:10,
+  label = c(
+    "Enrolled", "Discharged", "Assessed, 3m", "Not assessed, 3m",
+    "Not yet eligible, 3m", "Assessed, 12m", "Not assessed, 12m",
+    "Not yet eligible, 12m", "Hospitalized", "Withdrew", "Died"
+  )
+)
+
+## -- Sankey chart using plotly ------------------------------------------------
+# ## Couldn't get this to actually show up, and caused issues with DT, other JS
+# ##  widgets, I think due to spacing?
+# 
+# ## Convert edge labels to numeric values
+# sankey_edges2 <- sankey_edges %>%
+#   left_join(sankey_nodes, by = c("source" = "label")) %>%
+#   left_join(sankey_nodes, by = c("target" = "label")) %>%
+#   dplyr::select(-source, -target) %>%
+#   set_names(c("weight", "source", "target"))
+# 
+# pt_flow <- plot_ly(
+#   type = "sankey",
+#   orientation = "h",
+# 
+#   node = list(
+#     label = sankey_nodes %>% pull(label),
+#     color = c(
+#       mosaic_col("blue1"),   ## enrolled
+#       mosaic_col("green4"),  ## discharged
+#       mosaic_col("green4"),  ## assessed, 3m
+#       mosaic_col("orange1"), ## not assessed, 3m
+#       mosaic_col("cream"),   ## not yet eligible, 3m
+#       mosaic_col("green4"),  ## assessed, 12m
+#       mosaic_col("orange1"), ## not assessed, 12m
+#       mosaic_col("cream"),   ## not yet eligible, 12m
+#       mosaic_col("orange4"), ## still hospitalized
+#       mosaic_col("red2"),    ## withdrew
+#       mosaic_col("red4")     ## died
+#     )
+#   ),
+# 
+#   link = list(
+#     source = sankey_edges2 %>% pull(source),
+#     target = sankey_edges2 %>% pull(target),
+#     value = sankey_edges2 %>% pull(weight),
+#     
+#     width = 500, height = 25
+#   )
+# ) %>%
+#   layout(autosize = FALSE)
+
+## -- Sankey chart using googleVis ---------------------------------------------
+## Nodes need to be in correct order
+sankey_edges2 <- sankey_edges %>%
+  mutate(
+    sort_source = case_when(
+      source == "Died, 3m"              ~ 8,
+      source == "Withdrew, 3m"          ~ 7,
+      source == "Not yet eligible, 3m"  ~ 6,
+      source == "Not assessed, 3m"      ~ 5,
+      source == "Assessed, 3m"          ~ 4,
+      source == "Died, hospital"        ~ 3,
+      source == "Withdrew, hospital"    ~ 2,
+      source == "Discharged"          ~ 1,
+      source == "Enrolled"            ~ 0,
+      TRUE ~ as.numeric(NA)
+    ),
+    sort_target = case_when(
+      target == "Died, 12m"             ~ 13,
+      target == "Withdrew, 12m"         ~ 12,
+      target == "Not yet eligible, 12m" ~ 11,
+      target == "Not assessed, 12m"     ~ 10,
+      target == "Assessed, 12m"         ~ 9,
+      target == "Died, 3m"              ~ 8,
+      target == "Withdrew, 3m"          ~ 7,
+      target == "Not yet eligible, 3m"  ~ 6,
+      target == "Not assessed, 3m"      ~ 5,
+      target == "Assessed, 3m"          ~ 4,
+      target == "Died, hospital"        ~ 3,
+      target == "Withdrew, hospital"    ~ 2,
+      target == "Discharged"            ~ 1,
+      target == "Hospitalized"          ~ 0,
+      TRUE ~ as.numeric(NA)
+    )
+  ) %>%
+  arrange(sort_source, sort_target) %>%
+  ## Add Ns for total source, targets
+  group_by(source) %>%
+  add_tally(weight) %>%
+  ungroup() %>%
+  group_by(target) %>%
+  add_tally(weight) %>%
+  ungroup() %>%
+  dplyr::select(-sort_source, -sort_target) %>%
+  set_names(c("source", "target", "weight", "source_total", "target_total")) %>%
+  mutate(
+    to_from = paste0("<b>", source, " -> ", target, ":</b>"),
+    flow.tooltip = case_when(
+      ## Target nodes where 100% of patients came from same source:
+      ## N + % (n) of source
+      target %in% c(
+        "Discharged", "Withdrew, hospital", "Died, hospital", "Hospitalized",
+        "Assessed, 3m", "Not assessed, 3m", "Not yet eligible, 3m"
+      ) ~ paste0(
+        to_from,
+        "<br>N = ", weight, "<br>", scales::percent(weight / source_total),
+        " of ", source_total, " ", tolower(source)
+      ),
+      ## Source nodes where 100% of patients go to same target:
+      ##  N + % (n) of target
+      source %in% c(
+        "Withdrew, hospital", "Died, hospital", "Died, 3m", "Withdrew, 3m"
+      ) ~ paste0(
+        to_from, "<br>N = ", weight, "<br>",
+        scales::percent(weight / target_total), " of ",
+        target_total, " ", tolower(target)
+      ),
+      ## Otherwise, add N, % (n) of source, and % (n) of target
+      TRUE ~ paste0(
+        to_from, "<br>N = ", weight, "<br>",
+        scales::percent(weight / source_total), " of ", source_total, " ",
+        tolower(source),
+        "<br>", scales::percent(weight / target_total), " of ",
+        target_total, " ", tolower(target)
+      )
+    )
+  )
+
+ptflow_gvis <- gvisSankey(
+  sankey_edges2,
+  from = "source",
+  to = "target",
+  weight = "weight",
+  options = list(
+    height = 200, width = 700,
+    tooltip = "{isHtml:'True'}",
+    sankey = "{link: { colorMode: 'gradient' },
+               node: { colors: ['#283C72',
+                                '#243E8B',
+                                '#1A653E',
+                                '#FA961F',
+                                '#C0232C',
+                                
+                                '#1A653E',
+                                '#E76A32',
+                                '#24ADCD',
+                                '#FA961F',
+                                '#C0232C',
+                                
+                                '#1A653E',
+                                '#E76A32',
+                                '#24ADCD',
+                                '#C0232C',
+                                '#FA961F'],
+                       label: { fontSize: 12, bold: true }
+                      },
+               iterations: 0 }"
+  )
+)
+
+```
+
+```{r print_sankey, results = "asis"}
+## plotly: not showing up
+# pt_flow
+
+# ## networkD3: This isn't showing up, makes DT go away
+# networkD3::sankeyNetwork(
+#   Links = sankey_edges2, Nodes = sankey_nodes,
+#   Source = "source", Target = "target", Value = "weight",
+#   NodeID = "label",
+#   fontSize = 16, unit = "Patients", height = 500, width = 750
+# )
+
+## Let's try googleVis
+print(ptflow_gvis, tag = "chart")
+
+```
 
 Study & Technical Info
 =====================================

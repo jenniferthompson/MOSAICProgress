@@ -44,7 +44,7 @@ inhosp_df <- import_df("MOSAIC_IH_TOKEN")
 exc_df <- import_df("MOSAIC_EXC_TOKEN")
 fu_df <- import_df("MOSAIC_FU_TOKEN")
 # save(inhosp_df, exc_df, fu_df, file = "testdata/testdata.Rdata")
-# load("testdata/testdata.Rdata")
+# load("../testdata/testdata.Rdata")
 
 ## Remove test patients from each database
 inhosp_df <- inhosp_df[grep("test", tolower(inhosp_df$id), invert = TRUE),]
@@ -447,7 +447,7 @@ fu_df2 <- fu_dummy %>%
     fu_df %>%
       ## Select only variables needed for status, completion at time point
       dplyr::select(
-        id, redcap_event_name, ends_with("complete_yn"), rbans_completed,
+        id, redcap_event_name, ends_with("complete_yn"), gq_rsn, rbans_completed,
         trails_completed, pase_comp_ph, emp_complete, hus_complete, bpi_complete,
         ends_with("datecomp"), ends_with("date"), ends_with("date_complete"),
         ends_with("date_compl")
@@ -534,6 +534,10 @@ fu_long <- fu_df2 %>%
     ),
     in_window = ifelse(is.na(hospdis_date), NA, enter_window <= Sys.Date()),
     
+    ## Indicator for whether patient refused assessment (but didn't withdraw)
+    ## Currently relies on general questions only; checking with Julie
+    refused_gq = !is.na(gq_rsn) & gq_rsn == "Patient refusal",
+    
     ## Followup status:
     ## - Had >1 assessment: Assessed
     ## - Died prior to end of followup window: Died
@@ -553,15 +557,17 @@ fu_long <- fu_df2 %>%
         Sys.Date() < enter_window                           ~ 4,
         inhosp_status == "Still in hospital"                ~ as.numeric(NA),
         phone_only & id %in% paste0("VMO-00", 1:7)          ~ 5,
-        TRUE                                                ~ 6
+        refused_gq                                          ~ 6,
+        TRUE                                                ~ 7
       ),
-      levels = 1:6,
+      levels = 1:7,
       labels = c(
         "Assessment fully or partially completed",
         "Died before follow-up window ended",
         "Withdrew before follow-up window ended",
         "Not yet eligible for follow-up",
         "Consent did not include phone assessment",
+        "Refused assessment (but did not withdraw)",
         "Eligible, but not yet assessed"
       )
     ),
@@ -569,7 +575,9 @@ fu_long <- fu_df2 %>%
     ## Indicators for whether patient is eligible for followup (included in
     ##  denominator) and has been assessed (included in numerator)
     fu_elig = fu_status %in% c(
-      "Assessment fully or partially completed", "Eligible, but not yet assessed"
+      "Assessment fully or partially completed",
+      "Refused assessment (but did not withdraw)",
+      "Eligible, but not yet assessed"
     ),
     fu_comp = ifelse(
       !fu_elig, NA, fu_status == "Assessment fully or partially completed"
@@ -625,3 +633,81 @@ fu_asmts <- fu_long %>%
     n_comp = sum(asmt_done),
     prop_comp = mean(asmt_done)
   )
+
+## -- Rearrange data for Sankey plot -------------------------------------------
+## source = enrollment; target = end of hospitalization
+sankey_hospital <- all_enrolled %>%
+  dplyr::select(id, inhosp_status) %>%
+  distinct() %>%
+  set_names(c("id", "target")) %>%
+  mutate(
+    source = "Enrolled",
+    target = case_when(
+      target == "Still in hospital" ~ "Hospitalized",
+      target == "Discharged alive" ~ "Discharged",
+      TRUE ~ stringr::str_replace(target, " in ", ", ")
+    )
+  )
+
+## source = status after illness; target = status at 3m
+sankey_3m <- fu_long %>%
+  filter(
+    redcap_event_name == "3 Month Assessment",
+    inhosp_status != "Still in hospital"
+  ) %>%
+  dplyr::select(id, inhosp_status, fu_status) %>%
+  set_names(c("id", "source", "target")) %>%
+  mutate(
+    source = case_when(
+      source == "Died in hospital"     ~ "Died, hospital",
+      source == "Withdrew in hospital" ~ "Withdrew, hospital",
+      source == "Still in hospital"    ~ "Hospitalized",
+      TRUE                             ~ "Discharged"
+    ),
+    target = case_when(
+      source == "Died, hospital" |
+        target == "Died before follow-up window ended" ~ "Died, 3m",
+      source == "Withdrew, hospital" |
+        target == "Withdrew before follow-up window ended" ~ "Withdrew, 3m",
+      source == "Hospitalized" ~ "Hospitalized",
+      target == "Assessment fully or partially completed" ~ "Assessed, 3m",
+      target %in% c(
+        "Eligible, but not yet assessed",
+        "Refused assessment (but did not withdraw)"
+      ) ~ "Not assessed, 3m",
+      target == "Not yet eligible for follow-up" ~ "Not yet eligible, 3m",
+      TRUE ~ "Missing"
+    )
+  )
+
+## source = status at 3m; target = status at 12m
+sankey_12m <- fu_long %>%
+  filter(
+    redcap_event_name == "12 Month Assessment",
+    inhosp_status != "Still in hospital"
+  ) %>%
+  dplyr::select(id, fu_status) %>%
+  left_join(dplyr::select(sankey_3m, id, target)) %>%
+  ## target at 3m is now source at 12m
+  set_names(c("id", "target", "source")) %>%
+  mutate(
+    target = case_when(
+      source == "Hospitalized" ~ "Hospitalized",
+      target == "Died before follow-up window ended" ~ "Died, 12m",
+      target == "Withdrew before follow-up window ended" ~ "Withdrew, 12m",
+      target == "Assessment fully or partially completed" ~ "Assessed, 12m",
+      target %in% c(
+        "Eligible, but not yet assessed",
+        "Refused assessment (but did not withdraw)"
+      ) ~ "Not assessed, 12m",
+      target == "Not yet eligible for follow-up" ~ "Not yet eligible, 12m",
+      TRUE ~ "Missing"
+    )
+  )
+
+## Calculate final weights for each edge (# patients with each source/target combo)
+sankey_edges <- bind_rows(sankey_hospital, sankey_3m, sankey_12m) %>%
+  dplyr::select(-id) %>%
+  group_by(source, target) %>%
+  summarise(weight = n()) %>%
+  ungroup()
