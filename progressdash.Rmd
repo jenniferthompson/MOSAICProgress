@@ -581,7 +581,7 @@ valueBox(
 
 ```
 
-### **3-Month Assessments** (Out of `r nrow(fu_long %>% filter(redcap_event_name == "3 Month Assessment" & fu_comp))` Completed Assessments)
+### **3-Month Assessments** (Out of `r nrow(fu_long %>% filter(redcap_event_name == "3 Month Assessment" & fu_comp))` Completed Assessments)<br>*Not Yet Assessed*: `r paste(fu_long %>% filter(fu_elig, fu_status == "Eligible, but not yet assessed", redcap_event_name == "3 Month Assessment") %>% pull(id), collapse = "; ")`
 
 ```{r fu_asmts_3m}
 p_3m <- plot_asmts_comp(
@@ -637,7 +637,7 @@ valueBox(
 
 ```
 
-### **12-Month Assessments** (Out of `r nrow(fu_long %>% filter(redcap_event_name == "12 Month Assessment" & fu_comp))` Completed Assessments)
+### **12-Month Assessments** (Out of `r nrow(fu_long %>% filter(redcap_event_name == "12 Month Assessment" & fu_comp))` Completed Assessments)<br>*Not Yet Assessed*: `r paste(fu_long %>% filter(fu_elig, fu_status == "Eligible, but not yet assessed", redcap_event_name == "12 Month Assessment") %>% pull(id), collapse = "; ")`
 
 ```{r fu_asmts_12m}
 p_12m <- plot_asmts_comp(
@@ -677,12 +677,6 @@ p_6m <- plot_asmts_comp(
 ggplotly(p_6m + theme(axis.text.y = element_blank()), tooltip = "text")
 
 ```
-
-### Not Yet Assessed{data-width=30%}
-
-**3M:** `r paste(fu_long %>% filter(fu_elig, fu_status == "Eligible, but not yet assessed", redcap_event_name == "3 Month Assessment") %>% pull(id) %>% stringr::str_remove("VMO-"), collapse = "; ")`
-
-**12M:** `r paste(fu_long %>% filter(fu_elig, fu_status == "Eligible, but not yet assessed", redcap_event_name == "12 Month Assessment") %>% pull(id) %>% stringr::str_remove("VMO-"), collapse = "; ")`
 
 ### Patient Flow
 
@@ -834,7 +828,7 @@ ptflow_gvis <- gvisSankey(
   to = "target",
   weight = "weight",
   options = list(
-    height = 200, width = 700,
+    height = 200, width = 750,
     tooltip = "{isHtml:'True'}",
     sankey = "{link: { colorMode: 'gradient' },
                node: { colors: ['#283C72',
