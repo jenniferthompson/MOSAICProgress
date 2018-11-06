@@ -300,55 +300,89 @@ timeline_df <- tibble(
       labels = c("In hospital", "Withdrawn", "Discharged", "Deceased"))
   )
   
-## Data set for specimens: merge specimen variables onto study days 1, 3, 5, 29
-## (for specimen log, 29 = day of discharge, even if patient was discharged
-## earlier)
-specimen_df <- timeline_df %>%
+specimen_df <- inhosp_df %>%
   dplyr::select(
-    id, redcap_event_name, study_day, study_status, transition_day
+    id, redcap_event_name, specimen_date, starts_with("study_day_specimen"),
+    blue_drawn, purple_drawn
   ) %>%
-  left_join(
-    dplyr::select(inhosp_df, id, redcap_event_name, blue_drawn, purple_drawn),
-    by = c("id", "redcap_event_name")
+  ## Create a single value for which specimen was drawn (days 1/3/5/discharge)
+  unite(
+    specimen_time,
+    study_day_specimen_e, study_day_specimen_3, study_day_specimen_5,
+    study_day_specimen_dc,
+    sep = "; "
   ) %>%
-  ## Restrict to:
-  ## - Days 1, 3, 5, if patient was still hospitalized at least part of the day
-  ## - Day 29 (d/c event) if pt still hospitalized or had been discharged alive
-  ## If patient was discharged on day 7, still had "discharge" specimens entered
-  ## on discharge event.
-  filter(
-    (study_day %in% c(1, 3, 5) &
-       (study_status == "In hospital" | transition_day)) |
-      (study_day == 29 & study_status %in% c("In hospital", "Discharged"))
-  ) %>%
-  ## Reshape to long format, with one record per day/tube color
-  dplyr::select(id, study_day, blue_drawn, purple_drawn) %>%
-  gather(key = Color, value = drawn, blue_drawn:purple_drawn) %>%
   mutate(
-    Color = str_replace(Color, "\\_drawn", ""),
-    ## Compliance: At least one tube drawn
-    compliant = !is.na(drawn) & drawn > 0,
-    ## Factor version of study_day
-    Day = factor(
-      case_when(
-        study_day == 1 ~ 1,
-        study_day == 3 ~ 2,
-        study_day == 5 ~ 3,
-        TRUE           ~ 4
-      ),
-      levels = 1:4,
-      labels = c("Day 1", "Day 3", "Day 5", "Discharge")
+    ## String manipulation so each value includes only "Day x [and Discharge]"
+    specimen_time = str_remove_all(specimen_time, "NA|; *"),
+    specimen_time = ifelse(
+      specimen_time == "", NA,
+      str_remove(specimen_time, "Enrollment/| only")
     )
   ) %>%
-  ## Blue tubes are not drawn on days 3/5; keeping them in was causing
-  ##  tooltip issues
-  filter(!(Color == "blue" & study_day %in% c(3, 5))) %>%
+  separate(
+    specimen_time, into = c("specimen_time", "double_duty"), sep = " and "
+  ) %>%
+  mutate(double_duty = !is.na(double_duty))
+
+## Concatenate records pulling double duty: serve as both day 5 + d/c, eg
+specimen_df <- bind_rows(
+  specimen_df,
+  specimen_df %>%
+    filter(double_duty) %>%
+    mutate(
+      redcap_event_name = "Discharge Day",
+      specimen_time = "Discharge"
+    )
+) %>%
+  ## Remove records with no specimen_time; this affects a few records during
+  ##  the transition between the old + new ways of recording double-duty logs
+  ##  (eg: VMO-058, prior to EH correcting it)
+  filter(!is.na(specimen_time)) %>%
+  ## Join with records from timeline_df representing days which "should" have
+  ##  specimens (days 1, 3, 5, discharge)
+  right_join(
+    timeline_df %>%
+      filter(
+        redcap_event_name %in% c(
+          "Enrollment /Trial Day 1", "Trial Day 3",
+          "Trial Day 5", "Discharge Day"
+        )
+      ),
+    by = c("id", "redcap_event_name")
+  ) %>%
+  ## Keep rows where:
+  ## - study day 1, 3, 5 and patient hospitalized; or
+  ## - discharge day and patient is not deceased or withdrawn
+  filter(
+    (redcap_event_name %in%
+       c("Enrollment /Trial Day 1", "Trial Day 3", "Trial Day 5") &
+       (study_status == "In hospital" | transition_day)) |
+      (redcap_event_name == "Discharge Day" &
+         !(study_status %in% c("Deceased", "Withdrawn")))
+  ) %>%
+  ## Reshape to long format, with one record per day/tube color
+  dplyr::select(id, redcap_event_name, blue_drawn, purple_drawn) %>%
+  gather(key = Color, value = drawn, blue_drawn:purple_drawn) %>%
+  mutate(
+    Color = str_remove(Color, "\\_drawn"),
+    ## Compliance: At least one tube drawn
+    compliant = !is.na(drawn) & drawn > 0,
+    ## Factor version of event; rely on redcap_event_name, in case no data was
+    ##  entered for specimens
+    Day = fct_relevel(
+      str_remove(redcap_event_name, "[Enrollment /]*Trial | Day$"),
+      "Day 1", "Day 3", "Day 5", "Discharge"
+    )
+  ) %>%
+  ## Blue tubes are not drawn on days 3/5 (unless it was also discharge day)
+  filter(!(Color == "blue" & Day %in% c("Day 3", "Day 5"))) %>%
   ## Summarize % compliance by study day, tube color
   group_by(Day, Color) %>%
   summarise(
     Compliance = mean(compliant, na.rm = TRUE)
   ) %>%
-  ungroup() 
+  ungroup()
 
 ## -- Accelerometer info -------------------------------------------------------
 
