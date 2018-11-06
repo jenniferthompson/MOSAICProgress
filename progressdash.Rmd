@@ -435,7 +435,7 @@ Accelerometers{data-orientation=rows}
 Row {data-height=50%}
 --------------------------------------------------------------------------------
 
-### Accelerometer Snapshot: Patient-Days{data-width=30%}
+### Accelerometer Snapshot: Patient-Days{data-width=50%}
 
 ```{r accel_snapshot_days}
 ## -- Patient-days accelerometer was worn --------------------------------------
@@ -449,7 +449,7 @@ valueBox(
   color = ifelse(
     pct_accel_worn < 80, mosaic_col("orange3"), mosaic_col("green3")
   ),
-  icon = "fa-thumbs-up"
+  icon = "ion-watch"
 )
 
 ```
@@ -475,7 +475,7 @@ accel_rm_hist %>%
 Row {data-height=50%}
 --------------------------------------------------------------------------------
 
-### Accelerometer Snapshot: Patients{data-width=35%}
+### Accelerometer Snapshot: Patients{data-width=50%}
 
 ```{r accel_snapshot_pts}
 
@@ -488,7 +488,7 @@ valueBox(
   color = ifelse(pct_accel_permrm > 20, mosaic_col("red4"),
           ifelse(pct_accel_permrm > 15, mosaic_col("orange3"),
                  mosaic_col("green3"))),
-  icon = "fa-times-circle"
+  icon = "ion-close-circle"
 )
 
 ```
