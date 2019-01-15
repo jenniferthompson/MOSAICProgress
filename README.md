@@ -1,5 +1,5 @@
 # MOSAICProgress
-Dashboard for MOSAIC study monitoring.
+Dashboard for MOSAIC study monitoring. [Link to example](https://jenthompson.me/examples/progressdash.html)
 
 To create the dashboards automatically, set up a cron job in the terminal like
 this [(one `cron` reference guide)](https://www.ostechnix.com/a-beginners-guide-to-cron-jobs/):
